@@ -1,33 +1,23 @@
 import numpy as np
 import itertools
+import csv
 import random
 
 faultScenario = range(16)
-datasetSize = 50
+#per case: 30
+datasetSize = 30
 numRW = 4
-maxTime = 200 #seconds
+maxTime = 60 #seconds
+timeOffset = 5
 
 ktNominal = 0.029
+ktFaultDeviation = 0.002
+
 vbusNominal = 6
+vbusFaultDeviation = 2
+vbusFaultDeviationStep = 0.25
 
-def randIntList(maxNum, N=datasetSize):
-	return np.random.randint(maxNum, size=N)
-
-def randList(maxNum, decimals=None, N=datasetSize):
-	result = np.random.rand(N)*maxNum
-	if decimals:
-		return np.around(result, decimals=decimals)
-	return result
-
-def randDurationCalc(startTimes, maxTime=maxTime, decimals=None, N=datasetSize):
-	result = np.random.rand(N)*(maxTime - startTimes)
-	if decimals:
-		result = np.around(result, decimals=decimals)
-	return result
-
-def durationCheck(startTimes, durationTimes, maxTime=maxTime):
-	if all(i >= maxTime for i in startTimes+durationTimes):
-		raise Exception("Fault Duration exceeds maxTime ({})".format(maxTime))
+# start time: 5-195
 
 def generateFaultScenarioDict(numRW=numRW):
 	rw = np.arange(numRW)+1
@@ -36,21 +26,48 @@ def generateFaultScenarioDict(numRW=numRW):
 		faultDict += [list(i) for i in list(itertools.combinations(rw,i))]
 	return {idx:i for idx,i in enumerate(faultDict)}
 
+def randStartTime(maxNum=maxTime, N=datasetSize,timeOffset=timeOffset):
+	return np.random.randint(timeOffset, (maxNum-timeOffset), size=N)
+
+def randDuration(startTimes, maxNum=maxTime, timeOffset=timeOffset):
+	return np.array([np.random.randint(1,(maxNum+1-timeOffset)-t) for t in startTimes]) #removal of +1 allows min 1 sec duration
+
+def randKtSeverity(ktNominal=ktNominal, ktFaultDeviation=ktFaultDeviation, N=datasetSize):
+	return (2*ktFaultDeviation)*np.random.random_sample(N)+(ktNominal-ktFaultDeviation)
+
+def randVbusSeverity(vbusNominal=vbusNominal, dev=vbusFaultDeviation, step=vbusFaultDeviationStep, N=datasetSize):
+	return np.random.choice(np.arange(vbusNominal-dev,vbusNominal+dev+step,vbusFaultDeviationStep),N)
+
 faultScenarioDict = generateFaultScenarioDict()
-faultScenario = randIntList(len(faultScenarioDict.keys()))
-vbusBinary, ktBinary = randIntList(2,(2,datasetSize))
+totalResults = np.array(["scenario","ktBinary", "vbusBinary", "ktFaultStartTime", "vbusFaultStartTime","ktFaultDuration", "vbusFaultDuration", "ktFaultSeverity", "vbusFaultSeverity"]).T
+for scenario in faultScenarioDict.keys():
+	if scenario == 0:
+		continue
+	scenarioArr = np.array([scenario]*datasetSize)
+	ktBinary, vbusBinary = np.array([random.choice([[1,1],[1,0],[0,1]]) for i in range(datasetSize)]).T
+	
+	vbusFaultStartTime = randStartTime()*vbusBinary
+	vbusFaultDuration  = randDuration(vbusFaultStartTime)*vbusBinary
+	vbusFaultSeverity  = randVbusSeverity()*vbusBinary
 
-vbusFaultStartTime = randList(maxTime, 2) #edge case? what if all 200sec is fault? 0-199
-#ktFaultStartTime = vbusFaultStartTime[:]
-ktFaultStartTime = randList(maxTime, 2)
+	ktFaultStartTime = randStartTime()*ktBinary
+	ktFaultDuration  = randDuration(ktFaultStartTime)*ktBinary
+	ktFaultSeverity  = randKtSeverity()*ktBinary
 
-vbusFaultDuration = randDurationCalc(vbusFaultStartTime,decimals=2)
-#ktFaultDuration = vbusFaultDuration[:]
-ktFaultDuration = randDurationCalc(ktFaultStartTime,decimals=2)
+	vbusFaultSeverity = [vbusNominal if vbusBinary[idx]==0 else v for idx,v in enumerate(vbusFaultSeverity)]
+	ktFaultSeverity = [ktNominal if ktBinary[idx]==0 else kt for idx,kt in enumerate(ktFaultSeverity)]
 
-durationCheck(vbusFaultStartTime,vbusFaultDuration)
-durationCheck(ktFaultStartTime,ktFaultDuration)
+	#from IPython import embed; embed()
+	scenarioResults = np.array([scenarioArr,ktBinary, vbusBinary, ktFaultStartTime, vbusFaultStartTime,ktFaultDuration, vbusFaultDuration, ktFaultSeverity, vbusFaultSeverity]).T
+	if totalResults is None:
+		totalResults = scenarioResults
+	else:
+		totalResults = np.vstack((totalResults,scenarioResults))
 
-from IPython import embed; embed()
+with open('adcs_fdi_dataset.csv', 'w') as csvFile:
+    writer = csv.writer(csvFile)
+    writer.writerows(totalResults)
 
-results = np.array(list(itertools.product(*params)))
+csvFile.close()
+
+#results = np.array(list(itertools.product(*params)))
