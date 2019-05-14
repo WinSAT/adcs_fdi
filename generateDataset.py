@@ -37,7 +37,7 @@ def randVbusSeverity(vbusNominal=vbusNominal, dev=vbusFaultDeviation, step=vbusF
 	return np.random.choice(np.arange(vbusNominal-dev,vbusNominal+dev+step,vbusFaultDeviationStep),N)
 
 faultScenarioDict = generateFaultScenarioDict()
-totalResults = np.array(["scenario","ktBinary", "vbusBinary", "ktFaultStartTime", "vbusFaultStartTime","ktFaultDuration", "vbusFaultDuration", "ktFaultSeverity", "vbusFaultSeverity"]).T
+totalResults = np.array(["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]).T
 for scenario in faultScenarioDict.keys():
 	if scenario == 0:
 		nomValues = np.array([[ktNominal,vbusNominal]]*datasetSize).T
