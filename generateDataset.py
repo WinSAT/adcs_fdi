@@ -3,21 +3,19 @@ import itertools
 import csv
 import random
 
-faultScenario = range(16)
-#per case: 30
-datasetSize = 30
 numRW = 4
+datasetSize = 30 #per scenario
 maxTime = 60 #seconds
 timeOffset = 5
 
 ktNominal = 0.029
 ktFaultDeviation = 0.002
+ktSigDig = 4
 
 vbusNominal = 6
 vbusFaultDeviation = 2
 vbusFaultDeviationStep = 0.25
 
-# start time: 5-195
 
 def generateFaultScenarioDict(numRW=numRW):
 	rw = np.arange(numRW)+1
@@ -54,7 +52,7 @@ for scenario in faultScenarioDict.keys():
 
 	ktFaultStartTime = randStartTime()*ktBinary
 	ktFaultDuration  = randDuration(ktFaultStartTime)*ktBinary
-	ktFaultSeverity  = randKtSeverity()*ktBinary
+	ktFaultSeverity  = np.around(randKtSeverity()*ktBinary, ktSigDig)
 
 	vbusFaultSeverity = [vbusNominal if vbusBinary[idx]==0 else v for idx,v in enumerate(vbusFaultSeverity)]
 	ktFaultSeverity = [ktNominal if ktBinary[idx]==0 else kt for idx,kt in enumerate(ktFaultSeverity)]
