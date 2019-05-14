@@ -46,12 +46,14 @@ for scenario in faultScenarioDict.keys():
 	scenarioArr = np.array([scenario]*datasetSize)
 	ktBinary, vbusBinary = np.array([random.choice([[1,1],[1,0],[0,1]]) for i in range(datasetSize)]).T
 	
-	vbusFaultStartTime = randStartTime()*vbusBinary
-	vbusFaultDuration  = randDuration(vbusFaultStartTime)*vbusBinary
+	time = randStartTime()
+	duration = randDuration(time)
+	vbusFaultStartTime = time #randStartTime()*vbusBinary
+	vbusFaultDuration  = duration #randDuration(vbusFaultStartTime)*vbusBinary
 	vbusFaultSeverity  = randVbusSeverity()*vbusBinary
 
-	ktFaultStartTime = randStartTime()*ktBinary
-	ktFaultDuration  = randDuration(ktFaultStartTime)*ktBinary
+	ktFaultStartTime = time #randStartTime()*ktBinary
+	ktFaultDuration  = duration #randDuration(ktFaultStartTime)*ktBinary
 	ktFaultSeverity  = np.around(randKtSeverity()*ktBinary, ktSigDig)
 
 	vbusFaultSeverity = [vbusNominal if vbusBinary[idx]==0 else v for idx,v in enumerate(vbusFaultSeverity)]
