@@ -42,6 +42,8 @@ faultScenarioDict = generateFaultScenarioDict()
 totalResults = np.array(["scenario","ktBinary", "vbusBinary", "ktFaultStartTime", "vbusFaultStartTime","ktFaultDuration", "vbusFaultDuration", "ktFaultSeverity", "vbusFaultSeverity"]).T
 for scenario in faultScenarioDict.keys():
 	if scenario == 0:
+		#from IPython import embed; embed()
+		totalResults = np.vstack((totalResults,np.zeros((totalResults.shape[0],datasetSize)).T))
 		continue
 	scenarioArr = np.array([scenario]*datasetSize)
 	ktBinary, vbusBinary = np.array([random.choice([[1,1],[1,0],[0,1]]) for i in range(datasetSize)]).T
@@ -59,10 +61,7 @@ for scenario in faultScenarioDict.keys():
 
 	#from IPython import embed; embed()
 	scenarioResults = np.array([scenarioArr,ktBinary, vbusBinary, ktFaultStartTime, vbusFaultStartTime,ktFaultDuration, vbusFaultDuration, ktFaultSeverity, vbusFaultSeverity]).T
-	if totalResults is None:
-		totalResults = scenarioResults
-	else:
-		totalResults = np.vstack((totalResults,scenarioResults))
+	totalResults = np.vstack((totalResults,scenarioResults))
 
 with open('adcs_fdi_dataset.csv', 'w') as csvFile:
     writer = csv.writer(csvFile)
