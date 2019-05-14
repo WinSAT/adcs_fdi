@@ -67,7 +67,7 @@ for scenario in faultScenarioDict.keys():
 nums = np.hstack((["num"],np.arange(totalResults.shape[0]-1)))
 totalResults = np.vstack((nums,totalResults.T)).T
 
-with open('_'.join(totalResults[0])+'.csv', 'w') as csvFile:
+with open("adcs_fdi_inputs.csv", 'w') as csvFile:
     writer = csv.writer(csvFile)
     writer.writerows(totalResults)
 
