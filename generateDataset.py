@@ -4,7 +4,7 @@ import csv
 import random
 
 numRW = 4
-datasetSize = 30 #per scenario
+datasetSize = 625 #per scenario
 maxTime = 60 #seconds
 timeOffset = 5
 
@@ -67,7 +67,7 @@ for scenario in faultScenarioDict.keys():
 nums = np.hstack((["num"],np.arange(totalResults.shape[0]-1)))
 totalResults = np.vstack((nums,totalResults.T)).T
 
-with open("adcs_fdi_inputs.csv", 'w') as csvFile:
+with open("adcs_fdi_inputs_{}.csv".format(datasetSize), 'w') as csvFile:
     writer = csv.writer(csvFile)
     writer.writerows(totalResults)
 
