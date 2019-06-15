@@ -18,6 +18,10 @@ outputDataset = sorted(outputDataset, key=lambda i: float(i.split("_")[0]))
 
 inputDict = {}
 outputDict = {}
+
+def getList(numpyArray):
+	return array(numarray).tolist()
+
 for data in outputDataset:
 	dataPointNum = int(data.split('_')[0])
 	inputDict[dataPointNum] = array([float(i) for i in data.replace('.csv','').split('_')[1:]])
@@ -37,7 +41,7 @@ model1 = sklearn.tree.DecisionTreeClassifier()
 model2 = sklearn.neighbors.KNeighborsClassifier()
 model3 = sklearn.linear_model.LogisticRegression()
 
-model1.fit(list(outputTrain.values())[],list(inputTrain.values())[0])
+model1.fit(list(outputTrain.values()),list(inputTrain.values())[0])
 model2.fit(list(outputTrain.values()),list(inputTrain.values()))
 model3.fit(list(outputTrain.values()),list(inputTrain.values()))
 
