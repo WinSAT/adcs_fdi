@@ -46,13 +46,14 @@ for data in outputDataset:
 	#set rsme values as features
 	inputValues = inputData[0:1].astype(int)
 
-	inceptionTime = int(inputData[3])
-	timeframe = 1 if int(inputData[3]) == 0 else int(inputData[3])
+	inceptionTime = int(inputData[3]/csvTimestep)+1
+	timeframe = 1 #if int(inputData[5]) == 0 else int(inputData[5])
+	endTime = int((inputData[3]+timeframe)/csvTimestep)+1
 	#int(inputData[5])
 	#faulty = normalize(outputData[xNames].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
 	#nominal = normalize(outputData[xNamesNominal].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
-	faulty = normalize(outputData[xNames].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
-	nominal = normalize(outputData[xNamesNominal].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
+	faulty = (normalize(outputData[xNames].values)[inceptionTime:endTime])
+	nominal = (normalize(outputData[xNamesNominal].values)[inceptionTime:endTime])
 	outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
 	
 	#from IPython import embed; embed()
@@ -112,19 +113,22 @@ plt.close()
 fig = plt.figure()
 fig2 = plt.figure()
 fig3 = plt.figure()
+fig4 = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax2 = fig2.add_subplot(111, projection='3d')
 ax3 = fig3.add_subplot(111, projection='3d')
+ax4 = fig4.add_subplot(111, projection='3d')
 fig.suptitle("normalized rsme - q1,q1,q3 - colored by scenario")
 fig2.suptitle("normalized rsme - omega1,omega1,omega3 - colored by scenario")
 fig3.suptitle("normalized rsme - q1,q1,q3 - colored by kmeans cluster num")
+fig4.suptitle("normalized rsme - omega1,omega1,omega3 - colored by kmeans cluster num")
 from IPython import embed; embed()
 for i in range(len(X_train)):
 	#from IPython import embed; embed()
 	ax.scatter(X_train[i][0],X_train[i][1],X_train[i][2],color=cc[y_train[i]])
 	ax2.scatter(X_train[i][3],X_train[i][4],X_train[i][5],color=cc[y_train[i]])
-
-ax3.scatter(X_train[i][0],X_train[i][1],X_train[i][2],color=cc[y_pred_v[i]])
+	ax3.scatter(X_train[i][0],X_train[i][1],X_train[i][2],color=cc[y_pred_v[i]])
+	ax4.scatter(X_train[i][3],X_train[i][4],X_train[i][5],color=cc[y_pred_v[i]])
 plt.show()
 
 
@@ -139,12 +143,12 @@ clfs = {
 	"AdaBoostClassifier": AdaBoostClassifier(),
 	"MLPClassifier": MLPClassifier(alpha=1, max_iter=1000),
 }
-
+print "Accuracy scores:"
 for cluName, clu in clusters.items():
 	for clfName, clf in clfs.items():
 		y_pred_clu = clu.fit_predict(X_train)
 		clf.fit(y_pred_clu.reshape(-1,1),y_train)
 		y_pred = clf.predict(clu.fit_predict(X_test).reshape(-1,1)) 
-		print "{} & {} - accuuracy score: {}".format(cluName,clfName,accuracy_score(y_pred, y_test))
+		print "{} & {} : {:.2}%".format(cluName,clfName,accuracy_score(y_pred, y_test)*100)
 		clf = clone(clf)
 	clu = clone(clu)
