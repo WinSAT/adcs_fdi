@@ -14,9 +14,14 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import normalize
 
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_log_error
+from sklearn.metrics import explained_variance_score
+from sklearn.metrics import mean_absolute_error
+
 outputFolder = "output_625"
 
-listCutFactor = 15
+listCutFactor = 5
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
 outputDataset = outputDataset[::listCutFactor]
 
@@ -40,6 +45,9 @@ print ("started data handling")
 startTime = time.time()
 for data in outputDataset:
 	dataPointNum = int(data.split('_')[0])
+	scenarioNum = int(data.split('_')[1])
+	if scenarioNum > 4:
+		continue
 	inputData = np.array([float(i) for i in data.replace('.csv','').split('_')[1:]])
 	outputData = pd.read_csv(outputFolder+"/"+data)
 
@@ -47,15 +55,21 @@ for data in outputDataset:
 	inputValues = inputData[0:1].astype(int)
 
 	inceptionTime = int(inputData[3]/csvTimestep)+1
-	timeframe = 1 #if int(inputData[5]) == 0 else int(inputData[5])
+	timeframe = 3# if int(inputData[5]) == 0 else int(inputData[5])
 	endTime = int((inputData[3]+timeframe)/csvTimestep)+1
 	#int(inputData[5])
 	#faulty = normalize(outputData[xNames].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
 	#nominal = normalize(outputData[xNamesNominal].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
-	faulty = (normalize(outputData[xNames].values)[inceptionTime:endTime])
-	nominal = (normalize(outputData[xNamesNominal].values)[inceptionTime:endTime])
-	outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
-	
+	faulty = normalize(outputData[xNames].values)[inceptionTime:endTime]
+	nominal = normalize(outputData[xNamesNominal].values)[inceptionTime:endTime]
+	#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
+	outputValues = []
+	for i in range(len(xNames)):
+		outputValues.append(np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i]))) 	#.flatten()
+		outputValues.append(r2_score(nominal.T[i],faulty.T[i]))
+		outputValues.append(explained_variance_score(nominal.T[i],faulty.T[i]))
+		outputValues.append(mean_absolute_error(nominal.T[i],faulty.T[i]))
+
 	#from IPython import embed; embed()
 	xValues.append(outputValues)
 	yValues.append(inputValues)
@@ -105,8 +119,16 @@ cc = [(0.5, 0.25, 0.25),
  (0.5, 0.25, 0.4375),
  (0.5, 0.25, 0.34375)]
 
+cc = [(0.5, 0.25, 0.25),
+ (0.44999999999999996, 0.5, 0.25),
+ (0.25, 0.5, 0.3500000000000001),
+ (0.25, 0.3500000000000001, 0.5),
+ (0.4500000000000002, 0.25, 0.5)]
 
-v = KMeans(n_clusters=16,random_state=123)
+
+
+#v = #KMeans(n_clusters=5,random_state=123)
+v = GaussianMixture(n_components=5, covariance_type='full')
 y_pred_v = v.fit_predict(X_train)
 
 plt.close()
@@ -149,6 +171,6 @@ for cluName, clu in clusters.items():
 		y_pred_clu = clu.fit_predict(X_train)
 		clf.fit(y_pred_clu.reshape(-1,1),y_train)
 		y_pred = clf.predict(clu.fit_predict(X_test).reshape(-1,1)) 
-		print "{} & {} : {:.2}%".format(cluName,clfName,accuracy_score(y_pred, y_test)*100)
+		print "{} & {} : {:.3}%".format(cluName,clfName,accuracy_score(y_pred, y_test)*100)
 		clf = clone(clf)
 	clu = clone(clu)
