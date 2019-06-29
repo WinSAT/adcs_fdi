@@ -13,6 +13,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import normalize
+from sklearn.preprocessing import scale
 
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_log_error
@@ -62,13 +63,19 @@ for data in outputDataset:
 	#int(inputData[5])
 	#faulty = normalize(outputData[xNames].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
 	#nominal = normalize(outputData[xNamesNominal].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
-	faulty = (outputData[xNames].values)[inceptionTime:endTime]
-	nominal = (outputData[xNamesNominal].values)[inceptionTime:endTime]
+	faulty = normalize(outputData[xNames].values)[inceptionTime:endTime]
+	nominal = normalize(outputData[xNamesNominal].values)[inceptionTime:endTime]
 	#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
 	outputValues = []
 	for i in range(len(xNames)):
 		for p in [1]:
-			outputValues.append(np.sqrt(mean_squared_error(nominal.T[i]**p,faulty.T[i]**p))) 	#.flatten()
+			try:
+				outputValues.append(np.sqrt(mean_squared_error(nominal.T[i]**p,faulty.T[i]**p))) 	#.flatten()
+				#outputValues.append(mean_absolute_error(nominal.T[i]*10**p,faulty.T[i]*10**p))
+				#outputValues.append(r2_score(nominal.T[i]*10**p,faulty.T[i]*10**p))
+			except:
+				from IPython import embed; embed()
+			#outputValues.append(mean_absolute_error(nominal.T[i]**p,faulty.T[i]**p))
 			#outputValues.append(r2_score(nominal.T[i]**p,faulty.T[i]**p))
 			#outputValues.append(explained_variance_score(nominal.T[i]**p,faulty.T[i]**p))
 			#outputValues.append(mean_absolute_error(nominal.T[i]**p,faulty.T[i]**p))
@@ -84,7 +91,6 @@ yValues = np.ravel(yValues)
 xValues = np.array(xValues)
 X_train, X_test, y_train, y_test = train_test_split(xValues, yValues, test_size=0.2, random_state=123) #explain hypervariables
 
-from IPython import embed; embed()
 
 from mpl_toolkits.mplot3d import Axes3D 
 from sklearn.cluster import KMeans
@@ -134,9 +140,12 @@ pca = PCA(n_components=3)
 pcatst = pca.fit_transform(X_train)
 #v = #KMeans(n_clusters=5,random_state=123)
 n_components = max(yValues)+1
-v = GaussianMixture(n_components=n_components, covariance_type='full')
+#v = GaussianMixture(n_components=n_components, covariance_type='full')
+from sklearn.cluster import DBSCAN
+v = DBSCAN(eps=3, min_samples=2)
 #y_pred_v = v.fit_predict(X_train)
 y_pred_v = v.fit_predict(pcatst)
+from IPython import embed; embed()
 
 plt.close()
 fig = plt.figure()
