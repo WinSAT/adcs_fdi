@@ -19,9 +19,11 @@ from sklearn.metrics import mean_squared_log_error
 from sklearn.metrics import explained_variance_score
 from sklearn.metrics import mean_absolute_error
 
+from sklearn.decomposition import PCA
+
 outputFolder = "output_625"
 
-listCutFactor = 5
+listCutFactor = 4
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
 outputDataset = outputDataset[::listCutFactor]
 
@@ -54,21 +56,22 @@ for data in outputDataset:
 	#set rsme values as features
 	inputValues = inputData[0:1].astype(int)
 
-	inceptionTime = int(inputData[3]/csvTimestep)+1
-	timeframe = 3# if int(inputData[5]) == 0 else int(inputData[5])
-	endTime = int((inputData[3]+timeframe)/csvTimestep)+1
+	inceptionTime = int(inputData[3]/csvTimestep)
+	timeframe = int(inputData[5]/2) if int(inputData[5]) >= 2 else 1
+	endTime = int((inputData[3]+timeframe)/csvTimestep)
 	#int(inputData[5])
 	#faulty = normalize(outputData[xNames].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
 	#nominal = normalize(outputData[xNamesNominal].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
-	faulty = normalize(outputData[xNames].values)[inceptionTime:endTime]
-	nominal = normalize(outputData[xNamesNominal].values)[inceptionTime:endTime]
+	faulty = (outputData[xNames].values)[inceptionTime:endTime]
+	nominal = (outputData[xNamesNominal].values)[inceptionTime:endTime]
 	#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
 	outputValues = []
 	for i in range(len(xNames)):
-		outputValues.append(np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i]))) 	#.flatten()
-		outputValues.append(r2_score(nominal.T[i],faulty.T[i]))
-		outputValues.append(explained_variance_score(nominal.T[i],faulty.T[i]))
-		outputValues.append(mean_absolute_error(nominal.T[i],faulty.T[i]))
+		for p in [1]:
+			outputValues.append(np.sqrt(mean_squared_error(nominal.T[i]**p,faulty.T[i]**p))) 	#.flatten()
+			#outputValues.append(r2_score(nominal.T[i]**p,faulty.T[i]**p))
+			#outputValues.append(explained_variance_score(nominal.T[i]**p,faulty.T[i]**p))
+			#outputValues.append(mean_absolute_error(nominal.T[i]**p,faulty.T[i]**p))
 
 	#from IPython import embed; embed()
 	xValues.append(outputValues)
@@ -127,36 +130,43 @@ cc = [(0.5, 0.25, 0.25),
 
 
 
+pca = PCA(n_components=3)
+pcatst = pca.fit_transform(X_train)
 #v = #KMeans(n_clusters=5,random_state=123)
-v = GaussianMixture(n_components=5, covariance_type='full')
-y_pred_v = v.fit_predict(X_train)
+n_components = max(yValues)+1
+v = GaussianMixture(n_components=n_components, covariance_type='full')
+#y_pred_v = v.fit_predict(X_train)
+y_pred_v = v.fit_predict(pcatst)
 
 plt.close()
 fig = plt.figure()
-fig2 = plt.figure()
+#fig2 = plt.figure()
 fig3 = plt.figure()
-fig4 = plt.figure()
+#fig4 = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
-ax2 = fig2.add_subplot(111, projection='3d')
+#ax2 = fig2.add_subplot(111, projection='3d')
 ax3 = fig3.add_subplot(111, projection='3d')
-ax4 = fig4.add_subplot(111, projection='3d')
+#ax4 = fig4.add_subplot(111, projection='3d')
 fig.suptitle("normalized rsme - q1,q1,q3 - colored by scenario")
-fig2.suptitle("normalized rsme - omega1,omega1,omega3 - colored by scenario")
+#fig2.suptitle("normalized rsme - omega1,omega1,omega3 - colored by scenario")
 fig3.suptitle("normalized rsme - q1,q1,q3 - colored by kmeans cluster num")
-fig4.suptitle("normalized rsme - omega1,omega1,omega3 - colored by kmeans cluster num")
+#fig4.suptitle("normalized rsme - omega1,omega1,omega3 - colored by kmeans cluster num")
 from IPython import embed; embed()
-for i in range(len(X_train)):
+#xtrain = X_train
+xtrain = pcatst
+for i in range(len(xtrain)):
 	#from IPython import embed; embed()
-	ax.scatter(X_train[i][0],X_train[i][1],X_train[i][2],color=cc[y_train[i]])
-	ax2.scatter(X_train[i][3],X_train[i][4],X_train[i][5],color=cc[y_train[i]])
-	ax3.scatter(X_train[i][0],X_train[i][1],X_train[i][2],color=cc[y_pred_v[i]])
-	ax4.scatter(X_train[i][3],X_train[i][4],X_train[i][5],color=cc[y_pred_v[i]])
+	ax.scatter(xtrain[i][0],xtrain[i][1],xtrain[i][2],color=cc[y_train[i]])
+	#ax2.scatter(X_train[i][3],X_train[i][4],X_train[i][5],color=cc[y_train[i]])
+	ax3.scatter(xtrain[i][0],xtrain[i][1],xtrain[i][2],color=cc[y_pred_v[i]])
+	#ax4.scatter(X_train[i][3],X_train[i][4],X_train[i][5],color=cc[y_pred_v[i]])
 plt.show()
 
 
 clusters = {
-	"SpectralClustering": SpectralClustering(n_clusters=16,assign_labels="discretize",random_state=123),
-	"KMeans": KMeans(n_clusters=16,random_state=123),
+	"SpectralClustering": SpectralClustering(n_clusters=n_components,assign_labels="discretize",random_state=123),
+	"KMeans": KMeans(n_clusters=n_components,random_state=123),
+	"GaussianMixture": GaussianMixture(n_components=n_components, covariance_type='full')
 }
 
 clfs = {
