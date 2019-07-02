@@ -4,7 +4,7 @@ import csv
 import random
 
 numRW = 4
-datasetSize = 625 #per scenario
+datasetSize = 300 #per scenario
 maxTime = 60 #seconds
 timeOffset = 5
 
@@ -31,10 +31,12 @@ def randDuration(startTimes, maxNum=maxTime, timeOffset=timeOffset):
 	return np.array([np.random.randint(1,(maxNum+1-timeOffset)-t) for t in startTimes]) #removal of +1 allows min 1 sec duration
 
 def randKtSeverity(ktNominal=ktNominal, ktFaultDeviation=ktFaultDeviation, N=datasetSize):
-	return (2*ktFaultDeviation)*np.random.random_sample(N)+(ktNominal-ktFaultDeviation)
+	#return (2*ktFaultDeviation)*np.random.random_sample(N)+(ktNominal-ktFaultDeviation)
+	return np.ones(N)*(ktNominal+ktFaultDeviation)
 
 def randVbusSeverity(vbusNominal=vbusNominal, dev=vbusFaultDeviation, step=vbusFaultDeviationStep, N=datasetSize):
-	return np.random.choice(np.arange(vbusNominal-dev,vbusNominal+dev+step,vbusFaultDeviationStep),N)
+	#return np.random.choice(np.arange(vbusNominal-dev,vbusNominal+dev+step,vbusFaultDeviationStep),N)
+	return np.ones(N)*(vbusNominal+vbusFaultDeviation)
 
 faultScenarioDict = generateFaultScenarioDict()
 totalResults = np.array(["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]).T
@@ -67,7 +69,7 @@ for scenario in faultScenarioDict.keys():
 nums = np.hstack((["num"],np.arange(totalResults.shape[0]-1)))
 totalResults = np.vstack((nums,totalResults.T)).T
 
-with open("adcs_fdi_inputs_{}.csv".format(datasetSize), 'w') as csvFile:
+with open("adcs_fdi_inputs_{}_constSeverity.csv".format(datasetSize), 'w') as csvFile:
     writer = csv.writer(csvFile)
     writer.writerows(totalResults)
 
