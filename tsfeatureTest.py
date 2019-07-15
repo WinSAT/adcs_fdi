@@ -99,7 +99,7 @@ def sav(y,n=51,d=3):
 	return savgol_filter(y,n,d)
 
 trainFeatureMap = pd.DataFrame()
-testFeatureMap = np.empty((0,2))
+testFeatureMap = []
 count = 0
 for data in outputDataset:
 	dataPointNum = int(data.split('_')[0])
@@ -135,12 +135,11 @@ for data in outputDataset:
 	nominal =  (outputData[xNamesNominal].values)[inceptionTime:endTime]
 	residual = faulty - nominal
 	if count % 10 < 2:
-		scenarioFeatureMap = {'id':np.tile(0,len(residual)),'time':np.arange(len(residual))*csvTimestep}
+		scenarioFeatureMap = {'id':np.tile(1,len(residual)),'time':np.arange(len(residual))*csvTimestep}
 		scenarioFeatureMap.update({col.replace('faulty','residual'):residual.T[idx] for idx,col in enumerate(xNames)})
 		scenarioFeatureMap = pd.DataFrame(scenarioFeatureMap)
-		scenarioFeatureMap = extract_features(trainFeatureMap,column_id='id', column_sort='time', default_fc_parameters=EfficientFCParameters())
-		testFeatureMap = np.vstack((testFeatureMap,[scenarioNum,scenarioFeatureMap.to_numpy()]))
-		embed()
+		scenarioFeatureMap = extract_features(scenarioFeatureMap,column_id='id', column_sort='time', default_fc_parameters=EfficientFCParameters())
+		testFeatureMap.append([scenarioNum,scenarioFeatureMap.values[0]])
 	else:
 		scenarioFeatureMap = {'id':np.tile(scenarioNum,len(residual)),'time':np.arange(len(residual))*csvTimestep}
 		scenarioFeatureMap.update({col.replace('faulty','residual'):residual.T[idx] for idx,col in enumerate(xNames)})
