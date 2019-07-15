@@ -61,7 +61,7 @@ tsFeatureDict = {
 	'abs_energy': [],# 	Returns the absolute energy of the time series which is the sum over the squared values
 	'absolute_sum_of_changes': [],# 	Returns the sum over the absolute value of consecutive changes in the series x
 	#'agg_linear_trend': [param],# 	Calculates a linear least-squares regression for values of the time series that were aggregated over chunks versus the sequence from 0 up to the number of chunks minus one.
-	#'approximate_entropy': [m, r],# 	Implements a vectorized Approximate entropy algorithm.
+	#'approximate_entropy': [5, 3],# 	Implements a vectorized Approximate entropy algorithm.
 	#'ar_coefficient': [param],# 	This feature calculator fits the unconditional maximum likelihood of an autoregressive AR(k],# process.
 	#'augmented_dickey_fuller': [param],# 	The Augmented Dickey-Fuller test is a hypothesis test which checks whether a unit root is present in a time series sample.
 	#'autocorrelation': [lag],# 	Calculates the autocorrelation of the specified lag, according to the formula [1],
