@@ -7,10 +7,19 @@ from IPython import embed
 
 from tsfresh.feature_extraction import extract_features, EfficientFCParameters
 from tsfresh.feature_extraction import feature_calculators
+from sklearn.pipeline import Pipeline
+from tsfresh.transformers import RelevantFeatureAugmenter
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import normalize
+import seaborn as sn
+from sklearn.neural_network import MLPClassifier
+
 
 outputFolder = "output_300_constSeverity"
 
-listCutFactor = 3
+listCutFactor = 2
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
 outputDataset = outputDataset[::listCutFactor]
 
@@ -98,8 +107,10 @@ startTime = time.time()
 def sav(y,n=51,d=3):
 	return savgol_filter(y,n,d)
 
-trainFeatureMap = pd.DataFrame()
-testFeatureMap = []
+X_train = pd.DataFrame()
+X_test = pd.DataFrame()
+y_train = []
+y_test = []
 count = 0
 for data in outputDataset:
 	dataPointNum = int(data.split('_')[0])
@@ -133,24 +144,51 @@ for data in outputDataset:
 	#nominal = normalize(outputData[xNamesNominal].values[inceptionTime:inceptionTime+int(timeframe/csvTimestep)])
 	faulty = (outputData[xNames].values)[inceptionTime:endTime]
 	nominal =  (outputData[xNamesNominal].values)[inceptionTime:endTime]
+	#residual = faulty - nominal
 	residual = faulty - nominal
+
 	if count % 10 < 2:
-		scenarioFeatureMap = {'id':np.tile(1,len(residual)),'time':np.arange(len(residual))*csvTimestep}
+		scenarioFeatureMap = {'id':np.tile(len(y_test),len(residual)),'time':np.arange(len(residual))*csvTimestep}
 		scenarioFeatureMap.update({col.replace('faulty','residual'):residual.T[idx] for idx,col in enumerate(xNames)})
-		scenarioFeatureMap = pd.DataFrame(scenarioFeatureMap)
-		scenarioFeatureMap = extract_features(scenarioFeatureMap,column_id='id', column_sort='time', default_fc_parameters=EfficientFCParameters())
-		testFeatureMap.append([scenarioNum,scenarioFeatureMap.values[0]])
+		X_test = X_test.append(pd.DataFrame(scenarioFeatureMap),ignore_index=1)
+		y_test.append(scenarioNum)
 	else:
-		scenarioFeatureMap = {'id':np.tile(scenarioNum,len(residual)),'time':np.arange(len(residual))*csvTimestep}
+		scenarioFeatureMap = {'id':np.tile(len(y_train),len(residual)),'time':np.arange(len(residual))*csvTimestep}
 		scenarioFeatureMap.update({col.replace('faulty','residual'):residual.T[idx] for idx,col in enumerate(xNames)})
-		trainFeatureMap = pd.concat([trainFeatureMap,pd.DataFrame(scenarioFeatureMap)])
+		X_train = X_train.append(pd.DataFrame(scenarioFeatureMap),ignore_index=1)
+		y_train.append(scenarioNum)
+
 	count += 1
 	#embed()
 	#xValues.append(outputValuesQ)
 	#yValues.append(inputValues)
-
+y_train = pd.Series(y_train)
+y_test = pd.Series(y_test)
 print "finished data handling: {:.4}s".format(time.time()-startTime)
+#X = extract_features(trainFeatureMap,column_id='id', column_sort='time', default_fc_parameters=EfficientFCParameters())
+
+pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),
+            ('classifier', RandomForestClassifier())])
+Xtrain = pd.DataFrame(index=y_train.index)
+pipeline.set_params(augmenter__timeseries_container=X_train)
+pipeline.fit(Xtrain, y_train)
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+scenarioNumMax = 5
+pipeline.set_params(augmenter__timeseries_container=X_test)
+Xtest = pd.DataFrame(index=y_test.index)
+y_pred = pipeline.predict(Xtest)
+print classification_report(y_test.as_matrix(), y_pred)
+cm = confusion_matrix(y_test.as_matrix(), y_pred, labels=range(scenarioNumMax))
+cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+print cm
+
+df_cm = pd.DataFrame(cm, range(scenarioNumMax),range(scenarioNumMax))
+#plt.figure(figsize = (10,7))
+sn.set(font_scale=1.4)#for label size
+sn.heatmap(df_cm, annot=True,annot_kws={"size": 12})# font size
+plt.show()
+
 embed()
-X = extract_features(trainFeatureMap,column_id='id', column_sort='time', default_fc_parameters=EfficientFCParameters())
-X_train, X_test, y_train, y_test = train_test_split(xValues, yValues, test_size=0.2, random_state=123) #explain hypervariables
+
 
