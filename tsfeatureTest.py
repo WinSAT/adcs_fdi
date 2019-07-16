@@ -15,7 +15,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import normalize
 import seaborn as sn
 from sklearn.neural_network import MLPClassifier
-
+from sklearn.metrics import accuracy_score
 
 outputFolder = "output_300_constSeverity"
 
@@ -182,7 +182,7 @@ print classification_report(y_test.as_matrix(), y_pred)
 cm = confusion_matrix(y_test.as_matrix(), y_pred, labels=range(scenarioNumMax))
 cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 print cm
-
+print accuracy_score(y_pred,y_test)
 df_cm = pd.DataFrame(cm, range(scenarioNumMax),range(scenarioNumMax))
 #plt.figure(figsize = (10,7))
 sn.set(font_scale=1.4)#for label size
