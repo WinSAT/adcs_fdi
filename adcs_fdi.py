@@ -95,25 +95,20 @@ def generateTimeseriesFeatures(data):
 allDataX = {}
 allDataY = []
 idCounter = -1
-for dataSetId,dataSetName in enumerate(outputDataset):
-	dataSetNameVals = dataSetName.replace('.csv','').split('_')
-	dataSetParams = {}
+for dataSetId,data in enumerate(outputDataset):
+	dataSetParams = data.replace('.csv','').split('_')
+	dataSetParamsDict = {}
 	for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
-		dataSetParams[paramName] = float(dataSetNameVals[idx])
-
-	#if scenarioNum > 4: # only consider specific scenario numbers
-	#	continue
-	inputData = array([float(i) for i in dataSetNameVals[1:]])
-
-	outputData = pd.read_csv(outputFolder+"/"+dataSetName)
-
-	#cut data to only include faulty portion
-	outputData[int(dataSetParams['ktInception'])*10:int(dataSetParams['ktInception']+dataSetParams['ktDuration'])*10+1]
-
-
+		dataSetParamsDict[paramName] = float(dataSetParams[idx])
+ 	#if scenarioNum > 4: # only consider specific scenario numbers
+ 	#	continue
+	inputData = array([float(i) for i in dataSetParams[1:]])
+	outputData = pd.read_csv(outputFolder+"/"+data)
 	#ser input values to scenario numbers for target matrix
-	inputValues = take(inputData,[0]).astype(int)
-
+	inputValues = array([int(dataSetParamsDict[i]) for i in ['scenario']])
+	embed()
+	if dataSetParamsDict['ktDuration'] != 0.0:
+		outputData = outputData[int(dataSetParamsDict['ktInception'])*10:int(dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*10+1]
 	#normalized timeseries
 	faulty = normalize(outputData[xNamesFaulty].values).T
 	nominal =  normalize(outputData[xNamesNominal].values).T
