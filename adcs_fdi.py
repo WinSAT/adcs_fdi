@@ -63,8 +63,8 @@ inputDict = {}
 outputDict = {}
 
 #sets headers for faulty and nominal time series
-xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','omega1_faulty','omega2_faulty','omega3_faulty','wheel1_i_faulty','wheel2_i_faulty','wheel3_i_faulty','wheel4_i_faulty']
-xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','omega1_healthy','omega2_healthy','omega3_healthy','wheel1_i_healthy','wheel2_i_healthy','wheel3_i_healthy','wheel4_i_healthy']
+xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
+xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
 xNamesTrain = ['id', 'time'] + ['_'.join(i.split('_')[:-1]) for i in xNamesFaulty]
 
 xValues = []
@@ -95,15 +95,21 @@ def generateTimeseriesFeatures(data):
 allDataX = {}
 allDataY = []
 idCounter = -1
-for dataSetId,data in enumerate(outputDataset):
-	dataSetParams = data.replace('.csv','').split('_')
-	dataPointNum = int(dataSetParams[0])
-	scenarioNum = int(dataSetParams[1])
+for dataSetId,dataSetName in enumerate(outputDataset):
+	dataSetNameVals = dataSetName.replace('.csv','').split('_')
+	dataSetParams = {}
+	for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
+		dataSetParams[paramName] = float(dataSetNameVals[idx])
+
 	#if scenarioNum > 4: # only consider specific scenario numbers
 	#	continue
-	inputData = array([float(i) for i in dataSetParams[1:]])
+	inputData = array([float(i) for i in dataSetNameVals[1:]])
 
-	outputData = pd.read_csv(outputFolder+"/"+data)
+	outputData = pd.read_csv(outputFolder+"/"+dataSetName)
+
+	#cut data to only include faulty portion
+	outputData[int(dataSetParams['ktInception'])*10:int(dataSetParams['ktInception']+dataSetParams['ktDuration'])*10+1]
+
 
 	#ser input values to scenario numbers for target matrix
 	inputValues = take(inputData,[0]).astype(int)
