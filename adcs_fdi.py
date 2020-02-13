@@ -15,7 +15,6 @@ from numpy import *
 import os
 import matplotlib.pyplot as plt
 import time
-import pandas as pd
 from IPython import embed
 #import tsfresh
 
@@ -44,6 +43,24 @@ from sklearn.pipeline import Pipeline
 import pandas
 import time
 import sys
+import argparse
+
+from tsfresh import extract_features, extract_relevant_features, select_features
+from tsfresh.utilities.dataframe_functions import impute
+from tsfresh.feature_extraction import ComprehensiveFCParameters, MinimalFCParameters, EfficientFCParameters
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+from tsfresh import extract_relevant_features
+from sklearn.ensemble import GradientBoostingClassifier
+
+from hpsklearn import HyperoptEstimator, gradient_boosting, xgboost_classification
+from hyperopt import tpe,hp
+from hyperopt.fmin import fmin
+from xgboost import XGBClassifier
+from datetime import datetime
+import time
+print '\n'
 
 # Print iterations progress
 def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=50):
@@ -81,104 +98,114 @@ xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','omega1_faulty','omega2_faul
 xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
 columnNames = ['id','time']+[i.split('_')[0]+'_e' for i in xNamesFaulty]
 
-data_X = pandas.DataFrame([],columns=columnNames)
-data_Y = []
-print_progress(0, len(outputDataset), prefix = 'Data Handling:')
-try:
-	for dataSetId,data in enumerate(outputDataset):
-		dataSetParams = data.replace('.csv','').split('_')
-		dataSetParamsDict = {}
-		for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
-			dataSetParamsDict[paramName] = float(dataSetParams[idx])
-		#if scenarioNum > 4: # only consider specific scenario numbers
-		#	continue
-		inputData = array([float(i) for i in dataSetParams[1:]])
-		outputData = pd.read_csv(outputFolder+"/"+data)
-		#ser input values to scenario numbers for target matrix
-		#inputValues = [int(dataSetParamsDict[i]) for i in ['scenario']]
-		inputValues = dataSetParamsDict['scenario']
-		if dataSetParamsDict['ktDuration'] != 0.0:
-			outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
-		#normalized timeseries
-		faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
-		nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
-		datasetCutLength = faulty.shape[1]
-	
-		#filter implementation (unused)
-		#for i in range(len(faulty)):
-		#	faulty[i] = savgol_filter(faulty[i],41,3)
-		#	nominal[i] = savgol_filter(nominal[i],41,3)
-	
-		residuals = faulty - nominal
-		preDataFrameResiduals = vstack([tile(dataSetId,datasetCutLength),arange(datasetCutLength),residuals]).T
-		
-		'''
-		#plot datset for inspection
-		if inputValues[0] != 0:
-			fig, ax = plt.subplots(3,2)
-			fig.suptitle('q residuals')
-			[ax[i][0].plot(nominal[i],'b') for i in range(3)]
-			[ax[i][0].plot(faulty[i],'r') for i in range(3)]
-			[ax[i][1].plot(residuals[i]) for i in range(3)]
-			fig, ax = plt.subplots(3,2)
-			fig.suptitle('omega residuals')
-			[ax[i-3][0].plot(nominal[i],'b') for i in range(3)]
-			[ax[i-3][0].plot(faulty[i],'r') for i in range(3)]
-			[ax[i-3][1].plot(residuals[i]) for i in range(3,6)]
-			#embed()
-		'''
-	
-		#nominal = StandardScaler().fit_transform(nominal)
-		#faulty = StandardScaler().fit_transform(faulty)
-		#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
-		#resultsList['nominal'] = [nominal, array([0])] #hard coded nominal output
-		#if inputValues[0] != 0:
-		data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
-		data_Y.append(inputValues)
-		#data handling
-		print_progress(dataSetId, len(outputDataset), prefix = 'Data Handling:')
-
-	data_Y = pandas.Series(data_Y)
-except Exception as err:
-	print "Data handling error:", err
-	embed()
-
-from tsfresh import extract_features, extract_relevant_features, select_features
-from tsfresh.utilities.dataframe_functions import impute
-from tsfresh.feature_extraction import ComprehensiveFCParameters, MinimalFCParameters, EfficientFCParameters
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from tsfresh import extract_relevant_features
-from sklearn.ensemble import GradientBoostingClassifier
-
-from hpsklearn import HyperoptEstimator, gradient_boosting, xgboost_classification
-from hyperopt import tpe,hp
-from hyperopt.fmin import fmin
-from xgboost import XGBClassifier
-
-try:
-	df = data_X
-	y = data_Y
-	extraction_settings = ComprehensiveFCParameters()
-	#extraction_settings = EfficientFCParameters()
-	#extraction_settings = MinimalFCParameters()
-	
-	X_filtered = extract_relevant_features(df, y, 
-										   column_id='id', column_sort='time', 
-										   default_fc_parameters=extraction_settings)
-	
-	#saving extracted features
-	#https://github.com/zygmuntz/time-series-classification
-	X_filtered.to_csv('X_filtered.csv')
-	
+parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
+parser.add_argument('-x', type=str, help='X feature dataset')
+parser.add_argument('-y', type=str, help='Y feature dataset')
+parser.add_argument('--constained-scenario', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
+args = parser.parse_args()
+if args.x and args.y:
+	print 'Importing datasets - x: {}, y: {}'.format(args.x, args.y)
+	X_filtered = pandas.read_csv(args.x, index_col=0)
+	y = pandas.read_csv(args.y, index_col=0)
+	X_filtered = pandas.read_csv(args.x, header=0)
+	X_filtered.astype({'id': int})
 	print X_filtered.info()
+	y = pandas.read_csv(args.y, index_col=0, header=None)
 	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
+else:
+	try:
+		print 'Starting Data Handling'
+		data_X = pandas.DataFrame([],columns=columnNames)
+		data_Y = []
+		print_progress(0, len(outputDataset), prefix = 'Data Handling:')
+		#Data Handling
+		for dataSetId,data in enumerate(outputDataset):
+			dataSetParams = data.replace('.csv','').split('_')
+			dataSetParamsDict = {}
+			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
+				dataSetParamsDict[paramName] = float(dataSetParams[idx])
+			if args.constained-scenario: # only consider specific scenario numbers
+				if dataSetParamsDict['scenario'] not in map(float,args.constained-scenario.split(','))
+					continue
+			inputData = array([float(i) for i in dataSetParams[1:]])
+			outputData = pandas.read_csv(outputFolder+"/"+data)
+			#ser input values to scenario numbers for target matrix
+			#inputValues = [int(dataSetParamsDict[i]) for i in ['scenario']]
+			inputValues = dataSetParamsDict['scenario']
+			if dataSetParamsDict['ktDuration'] != 0.0:
+				outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
+			#normalized timeseries
+			faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
+			nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
+			datasetCutLength = faulty.shape[1]
+		
+			#filter implementation (unused)
+			#for i in range(len(faulty)):
+			#	faulty[i] = savgol_filter(faulty[i],41,3)
+			#	nominal[i] = savgol_filter(nominal[i],41,3)
+		
+			residuals = faulty - nominal
+			preDataFrameResiduals = vstack([tile(dataSetId,datasetCutLength),arange(datasetCutLength),residuals]).T
+			
+			'''
+			#plot datset for inspection
+			if inputValues[0] != 0:
+				fig, ax = plt.subplots(3,2)
+				fig.suptitle('q residuals')
+				[ax[i][0].plot(nominal[i],'b') for i in range(3)]
+				[ax[i][0].plot(faulty[i],'r') for i in range(3)]
+				[ax[i][1].plot(residuals[i]) for i in range(3)]
+				fig, ax = plt.subplots(3,2)
+				fig.suptitle('omega residuals')
+				[ax[i-3][0].plot(nominal[i],'b') for i in range(3)]
+				[ax[i-3][0].plot(faulty[i],'r') for i in range(3)]
+				[ax[i-3][1].plot(residuals[i]) for i in range(3,6)]
+				#embed()
+			'''
+		
+			#nominal = StandardScaler().fit_transform(nominal)
+			#faulty = StandardScaler().fit_transform(faulty)
+			#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
+			#resultsList['nominal'] = [nominal, array([0])] #hard coded nominal output
+			#if inputValues[0] != 0:
+			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
+			data_Y.append(inputValues)
+			#data handling
+			print_progress(dataSetId, len(outputDataset), prefix = 'Data Handling:')
 
-except Exception as err:
-	print "Feature Exraction Error:", e
-	embed()
-embed()
+		data_Y = pandas.Series(data_Y)
+	except Exception as err:
+		print "Data handling error:", err
+		embed()
+
+	try:
+		print 'Starting Feature Extraction'
+		extractStartTime = time.time()
+		df = data_X
+		y = data_Y
+		FCParameter = 'efficient'
+		extraction_settings = {
+			'comprehensive': ComprehensiveFCParameters(),
+			'efficient': EfficientFCParameters(),
+			'minimal': MinimalFCParameters(),
+		}
+		X_filtered = extract_relevant_features(df, y, 
+											   column_id='id', column_sort='time', 
+											   default_fc_parameters=extraction_settings[FCParameter])
+		
+		#saving extracted features
+		#https://github.com/zygmuntz/time-series-classification
+		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+		X_filtered.to_csv('X_{}_{}.csv'.format(FCParameter,saveTime))
+		y.to_csv('y_{}_{}.csv'.format(FCParameter,saveTime))
+		extractEndTime = time.time()
+		print X_filtered.info()
+		X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
+		print 'Feature Extraction Complete!!, it took {} seconds'.format(extractEndTime-extractStartTime)
+	except Exception as err:
+		print "Feature Exraction Error:", e
+		embed()
+#embed()
 #scoring test based on online resource
 def gini(truth, predictions):
 	g = asarray(c_[truth, predictions, arange(len(truth)) ], dtype=float)
@@ -201,7 +228,7 @@ def gini_sklearn(truth, predictions):
 gini_scorer = make_scorer(gini_xgb, greater_is_better=True, needs_proba=True)
 
 try:
-
+	print 'Starting ML Classifier'
 	def objective(params,X=X_filtered, Y=y):
 		#params = {
 		#	'max_depth': int(params['max_depth']),
