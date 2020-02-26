@@ -27,6 +27,7 @@ from scipy.signal import savgol_filter
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble.forest import RandomForestClassifier
 from sklearn.metrics import classification_report
+from sklearn.metrics import accuracy_score
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 #from hpsklearn import HyperoptEstimator, gradient_boosting
@@ -53,6 +54,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 from tsfresh import extract_relevant_features
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.preprocessing import StandardScaler
 
 from hpsklearn import HyperoptEstimator, gradient_boosting, xgboost_classification
 from hyperopt import tpe,hp
@@ -101,7 +103,7 @@ columnNames = ['id','time']+[i.split('_')[0]+'_e' for i in xNamesFaulty]
 parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
 parser.add_argument('-x', type=str, help='X feature dataset')
 parser.add_argument('-y', type=str, help='Y feature dataset')
-parser.add_argument('--constained-scenario', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
+parser.add_argument('--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 args = parser.parse_args()
 if args.x and args.y:
 	print 'Importing datasets - x: {}, y: {}'.format(args.x, args.y)
@@ -117,16 +119,23 @@ else:
 		print 'Starting Data Handling'
 		data_X = pandas.DataFrame([],columns=columnNames)
 		data_Y = []
+		constainedScenariosCounter = 0
 		print_progress(0, len(outputDataset), prefix = 'Data Handling:')
 		#Data Handling
-		for dataSetId,data in enumerate(outputDataset):
+		for dataSetID,data in enumerate(outputDataset):
 			dataSetParams = data.replace('.csv','').split('_')
 			dataSetParamsDict = {}
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 				dataSetParamsDict[paramName] = float(dataSetParams[idx])
-			if args.constained-scenario: # only consider specific scenario numbers
-				if dataSetParamsDict['scenario'] not in map(float,args.constained-scenario.split(','))
+			if args.constainedScenarios: # only consider specific scenario numbers
+				constainedScenariosFlag = args.constainedScenarios.replace(',','-')
+				if dataSetParamsDict['scenario'] not in map(float,args.constainedScenarios.split(',')):
 					continue
+				else:
+					dataSetID = constainedScenariosCounter
+					constainedScenariosCounter += 1
+			else:
+				constainedScenariosFlag = 'ALL'
 			inputData = array([float(i) for i in dataSetParams[1:]])
 			outputData = pandas.read_csv(outputFolder+"/"+data)
 			#ser input values to scenario numbers for target matrix
@@ -145,7 +154,7 @@ else:
 			#	nominal[i] = savgol_filter(nominal[i],41,3)
 		
 			residuals = faulty - nominal
-			preDataFrameResiduals = vstack([tile(dataSetId,datasetCutLength),arange(datasetCutLength),residuals]).T
+			preDataFrameResiduals = vstack([tile(dataSetID,datasetCutLength),arange(datasetCutLength),residuals]).T
 			
 			'''
 			#plot datset for inspection
@@ -171,7 +180,7 @@ else:
 			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
 			data_Y.append(inputValues)
 			#data handling
-			print_progress(dataSetId, len(outputDataset), prefix = 'Data Handling:')
+			print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
 
 		data_Y = pandas.Series(data_Y)
 	except Exception as err:
@@ -179,7 +188,7 @@ else:
 		embed()
 
 	try:
-		print 'Starting Feature Extraction'
+		print '\nStarting Feature Extraction'
 		extractStartTime = time.time()
 		df = data_X
 		y = data_Y
@@ -196,14 +205,18 @@ else:
 		#saving extracted features
 		#https://github.com/zygmuntz/time-series-classification
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
-		X_filtered.to_csv('X_{}_{}.csv'.format(FCParameter,saveTime))
-		y.to_csv('y_{}_{}.csv'.format(FCParameter,saveTime))
+		X_filtered.to_csv('X_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
+		y.to_csv('y_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
 		extractEndTime = time.time()
 		print X_filtered.info()
 		X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
+		std = StandardScaler()
+		std.fit(X_filtered_train.values)
+		X_filtered_train = std.transform(X_filtered_train.values)
+		X_filtered_test = std.transform(X_filtered_test.values)
 		print 'Feature Extraction Complete!!, it took {} seconds'.format(extractEndTime-extractStartTime)
 	except Exception as err:
-		print "Feature Exraction Error:", e
+		print "Feature Exraction Error:", err
 		embed()
 #embed()
 #scoring test based on online resource
@@ -228,6 +241,7 @@ def gini_sklearn(truth, predictions):
 gini_scorer = make_scorer(gini_xgb, greater_is_better=True, needs_proba=True)
 
 try:
+	'''
 	print 'Starting ML Classifier'
 	def objective(params,X=X_filtered, Y=y):
 		#params = {
@@ -269,6 +283,52 @@ try:
 	cl.fit(array(X_filtered_train), array(y_train))
 	print cl.score(array(X_filtered_test), array(y_test))
 	print classification_report(array(y_test), cl.predict(array(X_filtered_test))) 
+	print "The accuracy_score for XGBClassifier"
+	print "Training: {:6.5f}".format(accuracy_score(cl.predict(X_filtered_train), y_train))
+	print "Test Set: {:6.5f}".format(accuracy_score(cl.predict(X_filtered_test), y_test))
+
+	'''
+	from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_sparse_classifier
+	from hyperopt import tpe
+	'''
+	hptrees = {
+		'xgboost_classification': xgboost_classification('xgboost_classification'),
+		'random_forest': random_forest('random_forest'),
+		'decision_tree': decision_tree('decision_tree')
+	}
+	
+	for hpmethodName, hpmethod in hptrees.items():
+		print 'hpsklearn for', hpmethodName
+		estim = HyperoptEstimator( classifier=hpmethod, 
+		                            preprocessing=[standard_scaler('standard_scaler')],
+		                            algo=tpe.suggest, trial_timeout=300)
+		
+		estim.fit( X_filtered_train, y_train )
+		
+		print 'best model:', estim.best_model()
+		print 'best score:', estim.score( X_filtered_test, y_test )
+	'''
+	estim = HyperoptEstimator( classifier=any_sparse_classifier('clf'), 
+	                            preprocessing=[standard_scaler('standard_scaler')],
+	                            algo=tpe.suggest, trial_timeout=300)
+	
+	estim.fit( X_filtered_train, y_train )
+	
+	print 'best model:', estim.best_model()
+	print 'best score:', estim.score( X_filtered_test, y_test )
+	trees = {
+		'RandomForestClassifier': RandomForestClassifier(),
+		'DecisionTreeClassifier': DecisionTreeClassifier(), 
+		'GradientBoostingClassifier': GradientBoostingClassifier(),
+	}
+	for mlName, tree in trees.items():
+		tree.fit(X_filtered_train, y_train)
+		print "The accuracy_score for {}:".format(mlName)
+		print "Training: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_train), y_train))
+		print "Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test))
+
+
+
 
 except Exception as err:
 	print "ML Classifier Error:", err
