@@ -12,7 +12,7 @@
 ##################################################
 
 from numpy import *
-import os
+import sys, os
 import matplotlib.pyplot as plt
 import time
 from IPython import embed
@@ -62,6 +62,12 @@ from hyperopt.fmin import fmin
 from xgboost import XGBClassifier
 from datetime import datetime
 import time
+from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_sparse_classifier, min_max_scaler
+from hyperopt import tpe
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
+from tsfresh.examples import load_robot_execution_failures
+from tsfresh.transformers import RelevantFeatureAugmenter
 print '\n'
 
 # Print iterations progress
@@ -103,7 +109,7 @@ columnNames = ['id','time']+[i.split('_')[0]+'_e' for i in xNamesFaulty]
 parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
 parser.add_argument('-x', type=str, help='X feature dataset')
 parser.add_argument('-y', type=str, help='Y feature dataset')
-parser.add_argument('--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
+parser.add_argument('-cs','--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 args = parser.parse_args()
 if args.x and args.y:
 	print 'Importing datasets - x: {}, y: {}'.format(args.x, args.y)
@@ -192,7 +198,15 @@ else:
 		extractStartTime = time.time()
 		df = data_X
 		y = data_Y
-		FCParameter = 'efficient'
+		embed()
+		estim = HyperoptEstimator( classifier=any_sparse_classifier('clf'), 
+	                            preprocessing=[min_max_scaler('min_max_scaler')],
+	                            algo=tpe.suggest, trial_timeout=300)
+		pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
+
+		pipeline.set_params(augmenter__timeseries_container=data_X)
+		pipeline.fit(data_X,data_Y)
+		FCParameter = 'minimal'
 		extraction_settings = {
 			'comprehensive': ComprehensiveFCParameters(),
 			'efficient': EfficientFCParameters(),
@@ -204,16 +218,16 @@ else:
 		
 		#saving extracted features
 		#https://github.com/zygmuntz/time-series-classification
-		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
-		X_filtered.to_csv('X_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
-		y.to_csv('y_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
-		extractEndTime = time.time()
 		print X_filtered.info()
 		X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
-		std = StandardScaler()
-		std.fit(X_filtered_train.values)
-		X_filtered_train = std.transform(X_filtered_train.values)
-		X_filtered_test = std.transform(X_filtered_test.values)
+		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+		extractEndTime = time.time()
+		#X_filtered.to_csv('X_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
+		#y.to_csv('y_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
+		#std = StandardScaler()
+		#std.fit(X_filtered_train.values)
+		#X_filtered_train = std.transform(X_filtered_train.values)
+		#X_filtered_test = std.transform(X_filtered_test.values)
 		print 'Feature Extraction Complete!!, it took {} seconds'.format(extractEndTime-extractStartTime)
 	except Exception as err:
 		print "Feature Exraction Error:", err
@@ -288,8 +302,6 @@ try:
 	print "Test Set: {:6.5f}".format(accuracy_score(cl.predict(X_filtered_test), y_test))
 
 	'''
-	from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_sparse_classifier
-	from hyperopt import tpe
 	'''
 	hptrees = {
 		'xgboost_classification': xgboost_classification('xgboost_classification'),
@@ -308,14 +320,15 @@ try:
 		print 'best model:', estim.best_model()
 		print 'best score:', estim.score( X_filtered_test, y_test )
 	'''
+
 	estim = HyperoptEstimator( classifier=any_sparse_classifier('clf'), 
-	                            preprocessing=[standard_scaler('standard_scaler')],
+	                            preprocessing=[min_max_scaler('min_max_scaler')],
 	                            algo=tpe.suggest, trial_timeout=300)
-	
-	estim.fit( X_filtered_train, y_train )
+	embed()
+	#estim.fit( X_filtered_train, y_train.values)
 	
 	print 'best model:', estim.best_model()
-	print 'best score:', estim.score( X_filtered_test, y_test )
+	print 'best score:', estim.score( X_filtered_test.values, y_test.values)
 	trees = {
 		'RandomForestClassifier': RandomForestClassifier(),
 		'DecisionTreeClassifier': DecisionTreeClassifier(), 
@@ -328,10 +341,11 @@ try:
 		print "Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test))
 
 
-
-
 except Exception as err:
-	print "ML Classifier Error:", err
+	print "ML Classifier Error:\n"
+	exc_type, exc_obj, exc_tb = sys.exc_info()
+	fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+	print exc_type, fname, exc_tb.tb_lineno
 	embed()
 
 embed()
