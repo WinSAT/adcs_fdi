@@ -68,7 +68,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from tsfresh.examples import load_robot_execution_failures
 from tsfresh.transformers import RelevantFeatureAugmenter
-print '\n'
+print ('\n')
 
 # Print iterations progress
 def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=50):
@@ -112,17 +112,17 @@ parser.add_argument('-y', type=str, help='Y feature dataset')
 parser.add_argument('-cs','--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 args = parser.parse_args()
 if args.x and args.y:
-	print 'Importing datasets - x: {}, y: {}'.format(args.x, args.y)
+	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
 	X_filtered = pandas.read_csv(args.x, index_col=0)
 	y = pandas.read_csv(args.y, index_col=0)
 	X_filtered = pandas.read_csv(args.x, header=0)
 	X_filtered.astype({'id': int})
-	print X_filtered.info()
+	print (X_filtered.info())
 	y = pandas.read_csv(args.y, index_col=0, header=None)
 	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
 else:
 	try:
-		print 'Starting Data Handling'
+		print ('Starting Data Handling')
 		data_X = pandas.DataFrame([],columns=columnNames)
 		data_Y = []
 		constainedScenariosCounter = 0
@@ -190,11 +190,11 @@ else:
 
 		data_Y = pandas.Series(data_Y)
 	except Exception as err:
-		print "Data handling error:", err
+		print ("Data handling error:", err)
 		embed()
 
 	try:
-		print '\nStarting Feature Extraction'
+		print ('\nStarting Feature Extraction')
 		extractStartTime = time.time()
 		df = data_X
 		y = data_Y
@@ -218,7 +218,7 @@ else:
 		
 		#saving extracted features
 		#https://github.com/zygmuntz/time-series-classification
-		print X_filtered.info()
+		print (X_filtered.info())
 		X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 		extractEndTime = time.time()
@@ -228,9 +228,9 @@ else:
 		#std.fit(X_filtered_train.values)
 		#X_filtered_train = std.transform(X_filtered_train.values)
 		#X_filtered_test = std.transform(X_filtered_test.values)
-		print 'Feature Extraction Complete!!, it took {} seconds'.format(extractEndTime-extractStartTime)
+		print ('Feature Extraction Complete!!, it took {} seconds'.format(extractEndTime-extractStartTime))
 	except Exception as err:
-		print "Feature Exraction Error:", err
+		print ("Feature Exraction Error:", err)
 		embed()
 #embed()
 #scoring test based on online resource
@@ -256,7 +256,7 @@ gini_scorer = make_scorer(gini_xgb, greater_is_better=True, needs_proba=True)
 
 try:
 	'''
-	print 'Starting ML Classifier'
+	print ('Starting ML Classifier')
 	def objective(params,X=X_filtered, Y=y):
 		#params = {
 		#	'max_depth': int(params['max_depth']),
@@ -291,15 +291,15 @@ try:
 				space=space,
 				algo=tpe.suggest,
 				max_evals=10)
-	print 'best XGBClassifier:{}'.format(best)
+	print ('best XGBClassifier:{}'.format(best))
 
 	cl = XGBClassifier(**best)
 	cl.fit(array(X_filtered_train), array(y_train))
 	print cl.score(array(X_filtered_test), array(y_test))
 	print classification_report(array(y_test), cl.predict(array(X_filtered_test))) 
-	print "The accuracy_score for XGBClassifier"
-	print "Training: {:6.5f}".format(accuracy_score(cl.predict(X_filtered_train), y_train))
-	print "Test Set: {:6.5f}".format(accuracy_score(cl.predict(X_filtered_test), y_test))
+	print ("The accuracy_score for XGBClassifier")
+	print ("Training: {:6.5f}".format(accuracy_score(cl.predict(X_filtered_train), y_train)))
+	print ("Test Set: {:6.5f}".format(accuracy_score(cl.predict(X_filtered_test), y_test)))
 
 	'''
 	'''
@@ -310,15 +310,15 @@ try:
 	}
 	
 	for hpmethodName, hpmethod in hptrees.items():
-		print 'hpsklearn for', hpmethodName
+		print ('hpsklearn for', hpmethodName)
 		estim = HyperoptEstimator( classifier=hpmethod, 
 		                            preprocessing=[standard_scaler('standard_scaler')],
 		                            algo=tpe.suggest, trial_timeout=300)
 		
 		estim.fit( X_filtered_train, y_train )
 		
-		print 'best model:', estim.best_model()
-		print 'best score:', estim.score( X_filtered_test, y_test )
+		print ('best model:', estim.best_model())
+		print ('best score:', estim.score( X_filtered_test, y_test ))
 	'''
 
 	estim = HyperoptEstimator( classifier=any_sparse_classifier('clf'), 
@@ -327,8 +327,8 @@ try:
 	embed()
 	#estim.fit( X_filtered_train, y_train.values)
 	
-	print 'best model:', estim.best_model()
-	print 'best score:', estim.score( X_filtered_test.values, y_test.values)
+	print ('best model:', estim.best_model())
+	print ('best score:', estim.score( X_filtered_test.values, y_test.values))
 	trees = {
 		'RandomForestClassifier': RandomForestClassifier(),
 		'DecisionTreeClassifier': DecisionTreeClassifier(), 
@@ -336,16 +336,16 @@ try:
 	}
 	for mlName, tree in trees.items():
 		tree.fit(X_filtered_train, y_train)
-		print "The accuracy_score for {}:".format(mlName)
-		print "Training: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_train), y_train))
-		print "Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test))
+		print ("The accuracy_score for {}:".format(mlName))
+		print ("Training: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_train), y_train)))
+		print ("Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test)))
 
 
 except Exception as err:
-	print "ML Classifier Error:\n"
+	print ("ML Classifier Error:\n")
 	exc_type, exc_obj, exc_tb = sys.exc_info()
 	fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-	print exc_type, fname, exc_tb.tb_lineno
+	print (exc_type, fname, exc_tb.tb_lineno)
 	embed()
 
 embed()
