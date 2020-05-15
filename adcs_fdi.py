@@ -111,6 +111,7 @@ parser.add_argument('-x', type=str, help='X feature dataset')
 parser.add_argument('-y', type=str, help='Y feature dataset')
 parser.add_argument('-cs','--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 args = parser.parse_args()
+#if extracted feature dataset is passed
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
 	X_filtered = pandas.read_csv(args.x, index_col=0)
@@ -198,7 +199,6 @@ else:
 		extractStartTime = time.time()
 		df = data_X
 		y = data_Y
-		embed()
 		estim = HyperoptEstimator( classifier=any_sparse_classifier('clf'), 
 	                            preprocessing=[min_max_scaler('min_max_scaler')],
 	                            algo=tpe.suggest, trial_timeout=300)
