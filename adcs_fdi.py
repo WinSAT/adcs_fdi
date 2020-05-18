@@ -112,6 +112,18 @@ parser.add_argument('-y', type=str, help='Y feature dataset')
 parser.add_argument('-cs','--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 args = parser.parse_args()
 #if extracted feature dataset is passed
+
+def reduceScenarioDataEqaully(scenarioCsvs,percentRemove=0,numOfScenarios=15):
+	sortedScenarios = {i:[] for i in range(numOfScenarios)}
+	for i in scenarioCsvs:
+		scenario = int(i.split('_')[1])
+		sortedScenarios[scenario].append(i)
+	for i in range(numOfScenarios):
+		scData = sortedScenarios[i]
+		sortedScenarios[i] = scData[:int(ceil(len(scData)*(1-percentRemove)))]
+	return concatenate([i for i in sortedScenarios.values()])
+
+
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
 	X_filtered = pandas.read_csv(args.x, index_col=0)
@@ -129,20 +141,22 @@ else:
 		constainedScenariosCounter = 0
 		print_progress(0, len(outputDataset), prefix = 'Data Handling:')
 		#Data Handling
+		if args.constainedScenarios:
+			constainedScenarios = map(float,args.constainedScenarios.split(','))
 		for dataSetID,data in enumerate(outputDataset):
 			dataSetParams = data.replace('.csv','').split('_')
 			dataSetParamsDict = {}
+			#get dataset parameters as dict
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 				dataSetParamsDict[paramName] = float(dataSetParams[idx])
-			if args.constainedScenarios: # only consider specific scenario numbers
+			#if considering only specific scenario numbers
+			if args.constainedScenarios:
 				constainedScenariosFlag = args.constainedScenarios.replace(',','-')
-				if dataSetParamsDict['scenario'] not in map(float,args.constainedScenarios.split(',')):
+				if dataSetParamsDict['scenario'] not in constainedScenarios:
 					continue
-				else:
-					dataSetID = constainedScenariosCounter
-					constainedScenariosCounter += 1
 			else:
-				constainedScenariosFlag = 'ALL'
+				constainedScenariosFlag = None
+			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
 			outputData = pandas.read_csv(outputFolder+"/"+data)
 			#ser input values to scenario numbers for target matrix
@@ -212,6 +226,7 @@ else:
 			'efficient': EfficientFCParameters(),
 			'minimal': MinimalFCParameters(),
 		}
+		embed()
 		X_filtered = extract_relevant_features(df, y, 
 											   column_id='id', column_sort='time', 
 											   default_fc_parameters=extraction_settings[FCParameter])
