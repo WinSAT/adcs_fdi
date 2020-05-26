@@ -110,19 +110,22 @@ parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
 parser.add_argument('-x', type=str, help='X feature dataset')
 parser.add_argument('-y', type=str, help='Y feature dataset')
 parser.add_argument('-cs','--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
+parser.add_argument('-n','--numDatasets', type=str, help='number of datasets from each scenario')
 args = parser.parse_args()
 #if extracted feature dataset is passed
 
-def reduceScenarioDataEqaully(scenarioCsvs,percentRemove=0,numOfScenarios=15):
+def reduceScenarioDataEqaully(scenarioCsvs,numOfScenarios=16,numDatasets=300):
+	numDatasets = numDatasets if args.numDatasets==None else args.numDatasets
 	sortedScenarios = {i:[] for i in range(numOfScenarios)}
 	for i in scenarioCsvs:
 		scenario = int(i.split('_')[1])
 		sortedScenarios[scenario].append(i)
-	for i in range(numOfScenarios):
-		scData = sortedScenarios[i]
-		sortedScenarios[i] = scData[:int(ceil(len(scData)*(1-percentRemove)))]
-	return concatenate([i for i in sortedScenarios.values()])
-
+	for scn,vals in sortedScenarios.items():
+		if len(vals) < numDatasets:
+			raise Error('Passed datasetNum reduction < available number of datasets in scenario {}: {} < {}'.format(scn,len(vals),numDatasets))
+		random.shuffle(vals)
+		sortedScenarios[scn] = vals[:numDatasets]
+	return list(array([i for i in sortedScenarios.values()]).flatten())
 
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
@@ -143,7 +146,7 @@ else:
 		#Data Handling
 		if args.constainedScenarios:
 			constainedScenarios = map(float,args.constainedScenarios.split(','))
-		for dataSetID,data in enumerate(outputDataset):
+		for dataSetID,data in enumerate(reduceScenarioDataEqaully(outputDataset)):
 			dataSetParams = data.replace('.csv','').split('_')
 			dataSetParamsDict = {}
 			#get dataset parameters as dict
@@ -162,6 +165,7 @@ else:
 			#ser input values to scenario numbers for target matrix
 			#inputValues = [int(dataSetParamsDict[i]) for i in ['scenario']]
 			inputValues = dataSetParamsDict['scenario']
+
 			if dataSetParamsDict['ktDuration'] != 0.0:
 				outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
 			#normalized timeseries
