@@ -109,23 +109,24 @@ columnNames = ['id','time']+[i.split('_')[0]+'_e' for i in xNamesFaulty]
 parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
 parser.add_argument('-x', type=str, help='X feature dataset')
 parser.add_argument('-y', type=str, help='Y feature dataset')
-parser.add_argument('-cs','--constainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
-parser.add_argument('-n','--numDatasets', type=str, help='number of datasets from each scenario')
+parser.add_argument('-cs','--constrainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
+parser.add_argument('-cn','--constrainedNumDatasets', type=str, help='number of datasets from each scenario')
 args = parser.parse_args()
 #if extracted feature dataset is passed
 
-def reduceScenarioDataEqaully(scenarioCsvs,numOfScenarios=16,numDatasets=300):
-	numDatasets = numDatasets if args.numDatasets==None else args.numDatasets
+def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
+	if args.constrainedScenarios is None and args.constrainedNumDatasets is None:
+		return scenarioCsvs
+	constrainedScenarios = list(map(int,args.constrainedScenarios.split(','))) if args.constrainedScenarios is not None else range(numOfScenarios)
+	numDatasets = numDatasets if args.constrainedNumDatasets==None else args.constrainedNumDatasets
 	sortedScenarios = {i:[] for i in range(numOfScenarios)}
 	for i in scenarioCsvs:
 		scenario = int(i.split('_')[1])
-		sortedScenarios[scenario].append(i)
-	for scn,vals in sortedScenarios.items():
-		if len(vals) < numDatasets:
-			raise Error('Passed datasetNum reduction < available number of datasets in scenario {}: {} < {}'.format(scn,len(vals),numDatasets))
-		random.shuffle(vals)
-		sortedScenarios[scn] = vals[:numDatasets]
-	return list(array([i for i in sortedScenarios.values()]).flatten())
+		if scenario in constrainedScenarios and len(sortedScenarios[scenario]) < numDatasets:
+			sortedScenarios[scenario].append(i)
+	finalDatasets = concatenate(list(sortedScenarios.values())).tolist()
+	random.shuffle(finalDatasets)
+	return finalDatasets
 
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
@@ -141,24 +142,15 @@ else:
 		print ('Starting Data Handling')
 		data_X = pandas.DataFrame([],columns=columnNames)
 		data_Y = []
-		constainedScenariosCounter = 0
+		outputDataset = reduceScenarioData(outputDataset)
 		print_progress(0, len(outputDataset), prefix = 'Data Handling:')
 		#Data Handling
-		if args.constainedScenarios:
-			constainedScenarios = map(float,args.constainedScenarios.split(','))
-		for dataSetID,data in enumerate(reduceScenarioDataEqaully(outputDataset)):
+		for dataSetID,data in enumerate(outputDataset):
 			dataSetParams = data.replace('.csv','').split('_')
 			dataSetParamsDict = {}
 			#get dataset parameters as dict
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 				dataSetParamsDict[paramName] = float(dataSetParams[idx])
-			#if considering only specific scenario numbers
-			if args.constainedScenarios:
-				constainedScenariosFlag = args.constainedScenarios.replace(',','-')
-				if dataSetParamsDict['scenario'] not in constainedScenarios:
-					continue
-			else:
-				constainedScenariosFlag = None
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
 			outputData = pandas.read_csv(outputFolder+"/"+data)
