@@ -102,8 +102,8 @@ stepsizeFreq = 10.0
 
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
 
-xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
-xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
+xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','q4_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
+xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','q4_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
 columnNames = ['id','time']+[i.split('_')[0]+'_e' for i in xNamesFaulty]
 
 parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
@@ -143,8 +143,9 @@ else:
 		data_X = pandas.DataFrame([],columns=columnNames)
 		data_Y = []
 		outputDataset = reduceScenarioData(outputDataset)
-		print_progress(0, len(outputDataset), prefix = 'Data Handling:')
+		#print_progress(0, len(outputDataset), prefix = 'Data Handling:')
 		#Data Handling
+		dataSetIdCounter = 0
 		for dataSetID,data in enumerate(outputDataset):
 			dataSetParams = data.replace('.csv','').split('_')
 			dataSetParamsDict = {}
@@ -154,25 +155,35 @@ else:
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
 			outputData = pandas.read_csv(outputFolder+"/"+data)
-			embed()
 			#ser input values to scenario numbers for target matrix
 			#inputValues = [int(dataSetParamsDict[i]) for i in ['scenario']]
-			inputValues = int(dataSetParamsDict['scenario'])
+			#inputValues = int(dataSetParamsDict['scenario'])
+			inputValues = array([int(dataSetParamsDict[i]) for i in ["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration"]])
 
-			if dataSetParamsDict['ktDuration'] != 0.0:
-				outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
+			#if dataSetParamsDict['ktDuration'] != 0.0:
+			#	outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
 			#normalized timeseries
-			faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
-			nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
-			datasetCutLength = faulty.shape[1]
+			nominal =  normalize(outputData[xNamesNominal].values,axis=0)
+			preDataFrame = vstack([tile(dataSetIdCounter,nominal.shape[0]),array(outputData['time']),nominal.T]).T
+			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrame,columns=columnNames)],ignore_index=True)
+			data_Y.append(zeros(len(inputValues)))
+			if dataSetParamsDict['scenario'] != 0:	
+				dataSetIdCounter += 1
+				faulty = normalize(outputData[xNamesFaulty].values,axis=0)
+				preDataFrame = vstack([tile(dataSetIdCounter,faulty.shape[0]),array(outputData['time']),faulty.T]).T
+				data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrame,columns=columnNames)],ignore_index=True)
+				data_Y.append(inputValues)
+				embed()
+			dataSetIdCounter += 1
+			#datasetCutLength = faulty.shape[1]
 		
 			#filter implementation (unused)
 			#for i in range(len(faulty)):
 			#	faulty[i] = savgol_filter(faulty[i],41,3)
 			#	nominal[i] = savgol_filter(nominal[i],41,3)
 		
-			residuals = faulty - nominal
-			preDataFrameResiduals = vstack([tile(dataSetID,datasetCutLength),arange(datasetCutLength),residuals]).T
+			#residuals = faulty - nominal
+			#preDataFrameResiduals = vstack([tile(dataSetID,datasetCutLength),arange(datasetCutLength),residuals]).T
 			
 			'''
 			#plot datset for inspection
@@ -195,10 +206,10 @@ else:
 			#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
 			#resultsList['nominal'] = [nominal, array([0])] #hard coded nominal output
 			#if inputValues[0] != 0:
-			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
-			data_Y.append(inputValues)
+			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
+			#data_Y.append(inputValues)
 			#data handling
-			print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
+			#print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
 
 		data_Y = pandas.Series(data_Y)
 	except Exception as err:
