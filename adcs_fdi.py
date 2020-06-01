@@ -154,9 +154,10 @@ else:
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
 			outputData = pandas.read_csv(outputFolder+"/"+data)
+			embed()
 			#ser input values to scenario numbers for target matrix
 			#inputValues = [int(dataSetParamsDict[i]) for i in ['scenario']]
-			inputValues = dataSetParamsDict['scenario']
+			inputValues = int(dataSetParamsDict['scenario'])
 
 			if dataSetParamsDict['ktDuration'] != 0.0:
 				outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
