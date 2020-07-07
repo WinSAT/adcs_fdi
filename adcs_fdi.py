@@ -25,7 +25,6 @@ from sklearn.preprocessing import normalize
 from scipy.signal import savgol_filter
 #from tsfresh import extract_relevant_features
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble.forest import RandomForestClassifier
 from sklearn.metrics import classification_report
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import AdaBoostClassifier
@@ -56,16 +55,14 @@ from tsfresh import extract_relevant_features
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
 
-from hpsklearn import HyperoptEstimator, gradient_boosting, xgboost_classification
 from hyperopt import tpe,hp
 from hyperopt.fmin import fmin
 from xgboost import XGBClassifier
 from datetime import datetime
 import time
-from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_sparse_classifier, min_max_scaler
+from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_classifier, min_max_scaler, gradient_boosting, any_preprocessing
 from hyperopt import tpe
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import RandomForestClassifier
 from tsfresh.examples import load_robot_execution_failures
 from tsfresh.transformers import RelevantFeatureAugmenter
 print ('\n')
@@ -104,7 +101,7 @@ outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".cs
 
 xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
 xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
-columnNames = ['id','time']+[i.split('_')[0]+'_e' for i in xNamesFaulty]
+columnNames = ['id','time']+[i.split('_')[0] for i in xNamesFaulty]
 
 parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
 parser.add_argument('-x', type=str, help='X feature dataset')
@@ -118,7 +115,7 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	if args.constrainedScenarios is None and args.constrainedNumDatasets is None:
 		return scenarioCsvs
 	constrainedScenarios = list(map(int,args.constrainedScenarios.split(','))) if args.constrainedScenarios is not None else range(numOfScenarios)
-	numDatasets = numDatasets if args.constrainedNumDatasets==None else args.constrainedNumDatasets
+	numDatasets = int(numDatasets) if args.constrainedNumDatasets==None else int(args.constrainedNumDatasets)
 	sortedScenarios = {i:[] for i in range(numOfScenarios)}
 	for i in scenarioCsvs:
 		scenario = int(i.split('_')[1])
@@ -130,13 +127,12 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
-	X_filtered = pandas.read_csv(args.x, index_col=0)
+	#X_filtered = pandas.read_csv(args.x, index_col=0)
 	y = pandas.read_csv(args.y, index_col=0)
-	X_filtered = pandas.read_csv(args.x, header=0)
-	X_filtered.astype({'id': int})
-	print (X_filtered.info())
-	y = pandas.read_csv(args.y, index_col=0, header=None)
-	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
+	data_X = pandas.read_csv(args.x, header=0)
+	data_X.astype({'id': int})
+	#print (X_filtered.info())
+	#y = pandas.read_csv(args.y, index_col=0, header=None)
 else:
 	try:
 		print ('Starting Data Handling')
@@ -161,8 +157,10 @@ else:
 			if dataSetParamsDict['ktDuration'] != 0.0:
 				outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
 			#normalized timeseries
-			faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
-			nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
+			#faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
+			faulty = (outputData[xNamesFaulty].values).T
+			#nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
+			nominal =  (outputData[xNamesNominal].values).T
 			datasetCutLength = faulty.shape[1]
 		
 			#filter implementation (unused)
@@ -170,8 +168,12 @@ else:
 			#	faulty[i] = savgol_filter(faulty[i],41,3)
 			#	nominal[i] = savgol_filter(nominal[i],41,3)
 		
-			residuals = faulty - nominal
-			preDataFrameResiduals = vstack([tile(dataSetID,datasetCutLength),arange(datasetCutLength),residuals]).T
+			#residuals = faulty - nominal
+			#preDataFrameResiduals = vstack([tile(dataSetID,datasetCutLength),arange(datasetCutLength),residuals]).T
+			nominalID = (dataSetID*2)
+			faultyID = (dataSetID*2)+1
+			nonimalStack = vstack([tile(nominalID,datasetCutLength),arange(datasetCutLength),nominal]).T
+			faultyStack = vstack([tile(faultyID,datasetCutLength),arange(datasetCutLength),faulty]).T
 			
 			'''
 			#plot datset for inspection
@@ -194,8 +196,10 @@ else:
 			#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
 			#resultsList['nominal'] = [nominal, array([0])] #hard coded nominal output
 			#if inputValues[0] != 0:
-			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
-			data_Y.append(inputValues)
+			data_X = pandas.concat([data_X,pandas.DataFrame(nonimalStack,columns=columnNames)],ignore_index=True)
+			data_Y.append(0)
+			data_X = pandas.concat([data_X,pandas.DataFrame(faultyStack,columns=columnNames)],ignore_index=True)
+			data_Y.append(int(dataSetParamsDict['scenario']))
 			#data handling
 			print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
 
@@ -209,32 +213,21 @@ else:
 		extractStartTime = time.time()
 		df = data_X
 		y = data_Y
-		estim = HyperoptEstimator( classifier=any_sparse_classifier('clf'), 
-	                            preprocessing=[min_max_scaler('min_max_scaler')],
-	                            algo=tpe.suggest, trial_timeout=300)
-		pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
-
-		pipeline.set_params(augmenter__timeseries_container=data_X)
-		pipeline.fit(data_X,data_Y)
-		FCParameter = 'minimal'
+		FCParameter = 'efficient'
 		extraction_settings = {
 			'comprehensive': ComprehensiveFCParameters(),
 			'efficient': EfficientFCParameters(),
 			'minimal': MinimalFCParameters(),
 		}
-		embed()
-		X_filtered = extract_relevant_features(df, y, 
-											   column_id='id', column_sort='time', 
-											   default_fc_parameters=extraction_settings[FCParameter])
-		
+		#X_filtered = extract_relevant_features(df, y, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
 		#saving extracted features
 		#https://github.com/zygmuntz/time-series-classification
-		print (X_filtered.info())
-		X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
+		#print (X_filtered.info())
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 		extractEndTime = time.time()
-		#X_filtered.to_csv('X_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
-		#y.to_csv('y_{}_{}_{}.csv'.format(FCParameter,constainedScenariosFlag,saveTime))
+		#X_filtered.to_csv('X_{}_{}.csv'.format(FCParameter,saveTime))
+		data_X.to_csv('X_{}.csv'.format(saveTime))
+		y.to_csv('y_{}.csv'.format(saveTime))
 		#std = StandardScaler()
 		#std.fit(X_filtered_train.values)
 		#X_filtered_train = std.transform(X_filtered_train.values)
@@ -243,28 +236,6 @@ else:
 	except Exception as err:
 		print ("Feature Exraction Error:", err)
 		embed()
-#embed()
-#scoring test based on online resource
-def gini(truth, predictions):
-	g = asarray(c_[truth, predictions, arange(len(truth)) ], dtype=float)
-	g = g[lexsort((g[:,2], -1*g[:,1]))]
-	gs = g[:,0].cumsum().sum() / g[:,0].sum()
-	gs -= (len(truth) + 1) / 2.
-	return gs / len(truth)
-
-def gini_xgb(predictions, truth):
-	truth = truth.get_label()
-	return 'gini', -1.0 * gini(truth, predictions) / gini(truth, truth)
-
-def gini_lgb(truth, predictions):
-	score = gini(truth, predictions) / gini(truth, truth)
-	return 'gini', score, True
-
-def gini_sklearn(truth, predictions):
-	return gini(truth, predictions) / gini(truth, truth)
-
-gini_scorer = make_scorer(gini_xgb, greater_is_better=True, needs_proba=True)
-
 try:
 	'''
 	print ('Starting ML Classifier')
@@ -323,18 +294,38 @@ try:
 	for hpmethodName, hpmethod in hptrees.items():
 		print ('hpsklearn for', hpmethodName)
 		estim = HyperoptEstimator( classifier=hpmethod, 
-		                            preprocessing=[standard_scaler('standard_scaler')],
-		                            algo=tpe.suggest, trial_timeout=300)
+									preprocessing=[standard_scaler('standard_scaler')],
+									algo=tpe.suggest, trial_timeout=300)
 		
 		estim.fit( X_filtered_train, y_train )
 		
 		print ('best model:', estim.best_model())
 		print ('best score:', estim.score( X_filtered_test, y_test ))
-	'''
+	
+	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X_filtered, y, test_size=.4)
+
+	embed()
+
+	estim = HyperoptEstimator(classifier=any_classifier('my_clf'),
+							  preprocessing=any_preprocessing('my_pre'),
+							  algo=tpe.suggest,
+							  max_evals=100,
+							  trial_timeout=120)
+
+	# Search the hyperparameter space based on the data
+
+	estim.fit(X_filtered_train, y_train)
+	print(estim.score(X_test, y_test))
+
+	print( estim.best_model() )
 
 	estim = HyperoptEstimator( classifier=any_sparse_classifier('clf'), 
-	                            preprocessing=[min_max_scaler('min_max_scaler')],
-	                            algo=tpe.suggest, trial_timeout=300)
+							preprocessing=[min_max_scaler('min_max_scaler')],
+							algo=tpe.suggest, trial_timeout=300)
+	pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
+
+	pipeline.set_params(augmenter__timeseries_container=X_filtered_train)
+	pipeline.fit(X_filtered_train,y_train)
 	embed()
 	#estim.fit( X_filtered_train, y_train.values)
 	
@@ -350,6 +341,24 @@ try:
 		print ("The accuracy_score for {}:".format(mlName))
 		print ("Training: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_train), y_train)))
 		print ("Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test)))
+	'''
+	estim = HyperoptEstimator(classifier=any_classifier('my_clf'),
+							  preprocessing=any_preprocessing('my_pre'),
+							  algo=tpe.suggest,
+							  max_evals=150,
+							  trial_timeout=120)
+	#pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
+	pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', GradientBoostingClassifier())])
+	
+	X = pandas.DataFrame(index=y.index)
+	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X, y, test_size=.25)
+	
+	pipeline.set_params(augmenter__timeseries_container=data_X)
+	pipeline.fit(X_filtered_train,y_train)
+	
+	y_pred = pipeline.predict(X_filtered_test)
+	print(accuracy_score(y_te,y_pred))
+	print(classification_report(y_te,y_pred))
 
 
 except Exception as err:
