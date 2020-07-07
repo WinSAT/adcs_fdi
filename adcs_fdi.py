@@ -139,8 +139,9 @@ else:
 		data_X = pandas.DataFrame([],columns=columnNames)
 		data_Y = []
 		outputDataset = reduceScenarioData(outputDataset)
-		print_progress(0, len(outputDataset), prefix = 'Data Handling:')
+		#print_progress(0, len(outputDataset), prefix = 'Data Handling:')
 		#Data Handling
+		dataSetIdCounter = 0
 		for dataSetID,data in enumerate(outputDataset):
 			dataSetParams = data.replace('.csv','').split('_')
 			dataSetParamsDict = {}
@@ -152,16 +153,32 @@ else:
 			outputData = pandas.read_csv(outputFolder+"/"+data)
 			#ser input values to scenario numbers for target matrix
 			#inputValues = [int(dataSetParamsDict[i]) for i in ['scenario']]
-			inputValues = dataSetParamsDict['scenario']
+			#inputValues = int(dataSetParamsDict['scenario'])
+			inputValues = array([int(dataSetParamsDict[i]) for i in ["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration"]])
 
-			if dataSetParamsDict['ktDuration'] != 0.0:
-				outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
+			#if dataSetParamsDict['ktDuration'] != 0.0:
+			#	outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
 			#normalized timeseries
 			#faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
 			faulty = (outputData[xNamesFaulty].values).T
 			#nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
 			nominal =  (outputData[xNamesNominal].values).T
 			datasetCutLength = faulty.shape[1]
+			'''
+			nominal =  normalize(outputData[xNamesNominal].values,axis=0)
+			preDataFrame = vstack([tile(dataSetIdCounter,nominal.shape[0]),array(outputData['time']),nominal.T]).T
+			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrame,columns=columnNames)],ignore_index=True)
+			data_Y.append(zeros(len(inputValues)))
+			if dataSetParamsDict['scenario'] != 0:	
+				dataSetIdCounter += 1
+				faulty = normalize(outputData[xNamesFaulty].values,axis=0)
+				preDataFrame = vstack([tile(dataSetIdCounter,faulty.shape[0]),array(outputData['time']),faulty.T]).T
+				data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrame,columns=columnNames)],ignore_index=True)
+				data_Y.append(inputValues)
+				embed()
+			dataSetIdCounter += 1
+			#datasetCutLength = faulty.shape[1]
+			'''
 		
 			#filter implementation (unused)
 			#for i in range(len(faulty)):
@@ -200,8 +217,10 @@ else:
 			data_Y.append(0)
 			data_X = pandas.concat([data_X,pandas.DataFrame(faultyStack,columns=columnNames)],ignore_index=True)
 			data_Y.append(int(dataSetParamsDict['scenario']))
+			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
+			#data_Y.append(inputValues)
 			#data handling
-			print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
+			#print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
 
 		data_Y = pandas.Series(data_Y)
 	except Exception as err:
@@ -359,6 +378,7 @@ try:
 	y_pred = pipeline.predict(X_filtered_test)
 	print(accuracy_score(y_te,y_pred))
 	print(classification_report(y_te,y_pred))
+	embed()
 
 
 except Exception as err:
