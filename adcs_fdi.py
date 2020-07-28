@@ -94,7 +94,7 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
 #
 #import lightgbm as lgbm
 
-outputFolder = "output_300_constSeverity_csvs"
+outputFolder = "output_625"
 stepsizeFreq = 10.0
 
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
@@ -160,9 +160,9 @@ else:
 			#	outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
 			#normalized timeseries
 			#faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
-			faulty = (outputData[xNamesFaulty].values).T
+			faulty = normalize(outputData[xNamesFaulty].values).T
 			#nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
-			nominal =  (outputData[xNamesNominal].values).T
+			#nominal =  (outputData[xNamesNominal].values).T
 			datasetCutLength = faulty.shape[1]
 			'''
 			nominal =  normalize(outputData[xNamesNominal].values,axis=0)
@@ -187,9 +187,9 @@ else:
 		
 			#residuals = faulty - nominal
 			#preDataFrameResiduals = vstack([tile(dataSetID,datasetCutLength),arange(datasetCutLength),residuals]).T
-			nominalID = (dataSetID*2)
-			faultyID = (dataSetID*2)+1
-			nonimalStack = vstack([tile(nominalID,datasetCutLength),arange(datasetCutLength),nominal]).T
+			#nominalID = (dataSetID*2)
+			faultyID = dataSetID
+			#nonimalStack = vstack([tile(nominalID,datasetCutLength),arange(datasetCutLength),nominal]).T
 			faultyStack = vstack([tile(faultyID,datasetCutLength),arange(datasetCutLength),faulty]).T
 			
 			'''
@@ -213,8 +213,8 @@ else:
 			#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
 			#resultsList['nominal'] = [nominal, array([0])] #hard coded nominal output
 			#if inputValues[0] != 0:
-			data_X = pandas.concat([data_X,pandas.DataFrame(nonimalStack,columns=columnNames)],ignore_index=True)
-			data_Y.append(0)
+			#data_X = pandas.concat([data_X,pandas.DataFrame(nonimalStack,columns=columnNames)],ignore_index=True)
+			#data_Y.append(0)
 			data_X = pandas.concat([data_X,pandas.DataFrame(faultyStack,columns=columnNames)],ignore_index=True)
 			data_Y.append(int(dataSetParamsDict['scenario']))
 			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
