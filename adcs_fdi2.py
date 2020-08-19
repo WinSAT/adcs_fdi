@@ -15,6 +15,7 @@ from numpy import *
 import numpy as np
 import sys, os
 import matplotlib.pyplot as plt
+import seaborn as sn
 import time
 from IPython import embed
 
@@ -134,22 +135,24 @@ data_X = []
 data_Y = []
 chuckSize = 40;
 dataSetIDCounter = []
-csvFilenameX = 'features_X.csv'
-csvFilenameY = 'features_Y.csv'
+csvFilenameX = 'features_X_01234.csv'
+csvFilenameY = 'features_Y_01234.csv'
+includedScenarios = [0,1,2,3,4]
 
 if not os.path.isfile(csvFilenameX) and not os.path.isfile(csvFilenameY):
 	print_progress(0, len(outputDataset), prefix = 'Data Handling:')
 	for dataSetID,data in enumerate(outputDataset):
-		dataSetIDCounter.append(dataSetID)
 		dataSetParams = data.replace('.csv','').split('_')
 		dataSetParamsDict = {}
 		#get dataset parameters as dict
 		for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 			dataSetParamsDict[paramName] = float(dataSetParams[idx])
 		#dataset parameters as array excluding id num
+		if int(dataSetParamsDict['scenario']) not in includedScenarios:
+			print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
+			continue
 		inputData = array([float(i) for i in dataSetParams[1:]])
 		outputData = pd.read_csv(outputFolder+"/"+data)
-
 		inputValues = array([int(dataSetParamsDict[i]) for i in ["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration"]])
 
 		faulty = outputData[xNamesFaulty].values.T
@@ -163,6 +166,7 @@ if not os.path.isfile(csvFilenameX) and not os.path.isfile(csvFilenameY):
 		data_X = vstack((data_X,resFeatures.values[0]))
 		data_Y.append(dataSetParamsDict['scenario'])
 		print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
+		dataSetIDCounter.append(dataSetID)
 
 		if dataSetID%chuckSize == 0:
 			df_data_X = pd.DataFrame(data=data_X,index=dataSetIDCounter,columns=resFeatures.columns)
@@ -189,118 +193,123 @@ from sklearn.model_selection import learning_curve
 
 X_train, X_test, y_train, y_test = train_test_split(data_X.values, data_Y.values.T[0].reshape(-1, 1), test_size=0.20)
 
-enc = OneHotEncoder()
-enc.fit(y_train)
-y_train = enc.transform(y_train).toarray()
-y_test = enc.transform(y_test).toarray()
+try:
 
-y_train_1d = np.ravel(enc.inverse_transform(y_train))
-y_test_1d = np.ravel(enc.inverse_transform(y_test))
+	enc = OneHotEncoder()
+	enc.fit(y_train)
+	y_train = enc.transform(y_train).toarray()
+	y_test = enc.transform(y_test).toarray()
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import learning_curve
+	y_train_1d = np.ravel(enc.inverse_transform(y_train))
+	y_test_1d = np.ravel(enc.inverse_transform(y_test))
+	print('OneHotEncoder done')
 
-args = {
-    'n_estimators':200,
-    'max_depth':25
-}
+	from sklearn.ensemble import RandomForestClassifier
+	from sklearn.model_selection import learning_curve
 
-clf = RandomForestClassifier(**args)
+	args = {
+	    'n_estimators':200,
+	    'max_depth':25
+	}
 
-n_feats = np.linspace(0.05, 1, 20)
-print(n_feats)
-train_size_abs, train_scores, test_scores = learning_curve(clf, X_train, y_train, train_sizes=n_feats, n_jobs=-1, verbose=10, cv=5)
+	clf = RandomForestClassifier(**args)
 
-
-def plot_learning_curve(train_size_abs, train_scores, test_scores):
-    train_score = train_scores.mean(axis = 1)
-    train_std = train_scores.std(axis = 1)
-    test_score = test_scores.mean(axis = 1)
-    test_std = test_scores.std(axis = 1)
-
-    plt.rcParams["figure.figsize"] = (12,10)
-    plt.rcParams["font.size"] = 25
-    sn.set_style("whitegrid")
-    plt.rcParams["font.family"] = "Times New Roman"
-    plt.style.use('grayscale')
-
-    plt.scatter(train_size_abs, train_score, s=100, marker="o", label="Train Set")
-    plt.plot(train_size_abs, train_score, "--")
-    # plt.fill_between(train_size_abs, train_score + train_std, train_score - train_std)
-
-    plt.scatter(train_size_abs, test_score, s=100, marker="^", label="Test Set")
-    plt.plot(train_size_abs, test_score, "--")
-    # plt.fill_between(train_size_abs, test_score + 2 * test_std, test_score - 2 * test_std, alpha=0.2)
-    plt.legend()
-    plt.xlabel("Training Set Size")
-    plt.tight_layout()
-
-plot_learning_curve(train_size_abs, train_scores, test_scores)
-plt.ylabel("Classifier Accuracy Score (k=5)")
-plt.show()
-
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_selection import RFE
-from sklearn.neural_network import MLPClassifier
-
-args = {
-    'n_estimators':200,
-    'max_depth':50
-}
-
-clf = RandomForestClassifier(**args)
-clf.fit(X_train, y_train_1d)
-
-rfe_selector = RFE(clf, n_features_to_select=300, step=0.05, verbose=1)
-rfe_selector = rfe_selector.fit(X_train, y_train_1d)
-
-from sklearn.feature_selection import RFECV
-from sklearn.svm import SVC
-
-args = {
-    'n_estimators':200,
-}
-
-clf_randomforest = RandomForestClassifier(**args)
-
-# The "accuracy" scoring is proportional to the number of correct
-# classifications
-rfecv = RFECV(estimator=clf_randomforest, step=15, cv=10, min_features_to_select=5,
-              scoring='accuracy', verbose=10)
-rfecv.fit(X_train, y_train_1d)
-
-for y, x in zip(rfecv2.grid_scores_, x_feat):
-    print("{} {}".format(x, y))
-
-# Plot number of features VS. cross-validation scores
-plt.xlabel("Number of features selected")
-plt.ylabel("Classifier Accuracy Score (k=10)")
-plt.scatter(x_feat, rfecv2.grid_scores_, s=70)
-
-"""
-Different trendlines to visualize the results
-"""
-
-from scipy.optimize import curve_fit
-
-def log(x, a, b, c):
-    return a*np.log(b*x) + c
-
-def exp(x, a, b, c):
-    return a * np.exp(-b * x) + c
-
-popt, pcov = curve_fit(log, x_feat, rfecv2.grid_scores_)
-
-xx = np.arange(10, 660, 1)
-yy = log(xx, *popt)
-plt.plot(xx, yy, "b--")
-xx = np.arange(0.01, 10, 0.01)
-yy = log(xx, *popt)
-plt.plot(xx, yy, "b--")
-
-plt.show()
+	n_feats = np.linspace(0.05, 1, 20)
+	print(n_feats)
+	print('train learning curve')
+	train_size_abs, train_scores, test_scores = learning_curve(clf, X_train, y_train, train_sizes=n_feats, n_jobs=-1, verbose=10, cv=5)
 
 
+	def plot_learning_curve(train_size_abs, train_scores, test_scores):
+	    train_score = train_scores.mean(axis = 1)
+	    train_std = train_scores.std(axis = 1)
+	    test_score = test_scores.mean(axis = 1)
+	    test_std = test_scores.std(axis = 1)
 
+	    plt.rcParams["figure.figsize"] = (12,10)
+	    plt.rcParams["font.size"] = 25
+	    sn.set_style("whitegrid")
+	    plt.rcParams["font.family"] = "Times New Roman"
+	    plt.style.use('grayscale')
 
-embed()
+	    plt.scatter(train_size_abs, train_score, s=100, marker="o", label="Train Set")
+	    plt.plot(train_size_abs, train_score, "--")
+	    # plt.fill_between(train_size_abs, train_score + train_std, train_score - train_std)
+
+	    plt.scatter(train_size_abs, test_score, s=100, marker="^", label="Test Set")
+	    plt.plot(train_size_abs, test_score, "--")
+	    # plt.fill_between(train_size_abs, test_score + 2 * test_std, test_score - 2 * test_std, alpha=0.2)
+	    plt.legend()
+	    plt.xlabel("Training Set Size")
+	    plt.tight_layout()
+
+	plot_learning_curve(train_size_abs, train_scores, test_scores)
+	plt.ylabel("Classifier Accuracy Score (k=5)")
+	plt.show()
+
+	from sklearn.ensemble import RandomForestClassifier
+	from sklearn.feature_selection import RFE
+	from sklearn.neural_network import MLPClassifier
+
+	args = {
+	    'n_estimators':200,
+	    'max_depth':50
+	}
+
+	clf = RandomForestClassifier(**args)
+	print('train RandomForestClassifier')
+	clf.fit(X_train, y_train_1d)
+
+	rfe_selector = RFE(clf, n_features_to_select=300, step=0.05, verbose=1)
+	print('train RFE')
+	rfe_selector = rfe_selector.fit(X_train, y_train_1d)
+	print('done train RFE')
+	from sklearn.feature_selection import RFECV
+	from sklearn.svm import SVC
+
+	args = {
+	    'n_estimators':200,
+	}
+
+	clf_randomforest = RandomForestClassifier(**args)
+
+	# The "accuracy" scoring is proportional to the number of correct
+	# classifications
+	rfecv = RFECV(estimator=clf_randomforest, step=15, cv=10, min_features_to_select=5,
+	              scoring='accuracy', verbose=10)
+	print('train RFECV')
+	rfecv.fit(X_train, y_train_1d)
+
+	for y, x in zip(rfecv.grid_scores_, x_feat):
+	    print("{} {}".format(x, y))
+
+	# Plot number of features VS. cross-validation scores
+	plt.xlabel("Number of features selected")
+	plt.ylabel("Classifier Accuracy Score (k=10)")
+	plt.scatter(x_feat, rfecv2.grid_scores_, s=70)
+
+	"""
+	Different trendlines to visualize the results
+	"""
+
+	from scipy.optimize import curve_fit
+
+	def log(x, a, b, c):
+	    return a*np.log(b*x) + c
+
+	def exp(x, a, b, c):
+	    return a * np.exp(-b * x) + c
+
+	popt, pcov = curve_fit(log, x_feat, rfecv2.grid_scores_)
+
+	xx = np.arange(10, 660, 1)
+	yy = log(xx, *popt)
+	plt.plot(xx, yy, "b--")
+	xx = np.arange(0.01, 10, 0.01)
+	yy = log(xx, *popt)
+	plt.plot(xx, yy, "b--")
+
+	plt.show()
+except Exception as err: 
+	print(err)
+	embed()
