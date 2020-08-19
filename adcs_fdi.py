@@ -57,7 +57,7 @@ from sklearn.preprocessing import StandardScaler
 
 from hyperopt import tpe,hp
 from hyperopt.fmin import fmin
-from xgboost import XGBClassifier
+#from xgboost import XGBClassifier
 from datetime import datetime
 import time
 from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_classifier, min_max_scaler, gradient_boosting, any_preprocessing
@@ -68,7 +68,7 @@ from tsfresh.transformers import RelevantFeatureAugmenter
 print ('\n')
 
 # Print iterations progress
-def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=50):
+def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_length=50):
 	"""
 	Call in a loop to create terminal progress bar
 	@params:
@@ -99,13 +99,15 @@ stepsizeFreq = 10.0
 
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
 
-xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
-xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
+xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','q4_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
+xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','q4_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
 columnNames = ['id','time']+[i.split('_')[0] for i in xNamesFaulty]
 
 parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
-parser.add_argument('-x', type=str, help='X feature dataset')
-parser.add_argument('-y', type=str, help='Y feature dataset')
+parser.add_argument('--x', type=str, help='X pandas dataset')
+parser.add_argument('--y', type=str, help='Y pandas dataset')
+parser.add_argument('--fx', type=str, help='X features dataset')
+parser.add_argument('--fy', type=str, help='Y features dataset')
 parser.add_argument('-cs','--constrainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 parser.add_argument('-cn','--constrainedNumDatasets', type=str, help='number of datasets from each scenario')
 args = parser.parse_args()
@@ -125,12 +127,60 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	random.shuffle(finalDatasets)
 	return finalDatasets
 
+feature_settings = {
+    "abs_energy" : None,
+    "absolute_sum_of_changes" : None,
+    "approximate_entropy": [{"m": 2, "r": r} for r in [.1, .3, .5, .7, .9]],
+    "agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
+    "binned_entropy" : [{"max_bins" : 10}],
+    "c3": [{"lag": 3}],
+    "cid_ce": [{"normalize":False}],
+    "count_above_mean" : None,
+    "count_below_mean" : None,
+    "energy_ratio_by_chunks": [{"num_segments" : 5, "segment_focus": i} for i in range(5)],
+    "first_location_of_maximum" : None,
+    "first_location_of_minimum" : None,
+    "has_duplicate" : None,
+    "has_duplicate_max" : None,
+    "has_duplicate_min" : None,
+    "index_mass_quantile": [{"q": q} for q in [0.25, 0.5, 0.75]],
+    "kurtosis" : None,
+    "last_location_of_maximum" : None,
+    "last_location_of_minimum" : None,
+    "length" : None,
+    "longest_strike_above_mean" : None,
+    "longest_strike_below_mean" : None,
+    "maximum" : None,
+    "max_langevin_fixed_point": [{"m": 3, "r": 30}],
+    "mean" : None,
+    "mean_abs_change" : None,
+    "mean_change" : None,
+    "median" : None,
+    "minimum" : None,
+    "number_peaks" : [{"n" : 3}],
+    "number_crossing_m" : [{"m" : 0}],
+    "percentage_of_reoccurring_values_to_all_values" : None,
+    "percentage_of_reoccurring_datapoints_to_all_datapoints" : None,
+    "quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
+    "range_count": [{"min": -1e12, "max": 0}, {"min": 0, "max": 1e12}],
+    "ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3]],
+    "sample_entropy" : None,
+    "skewness" : None,
+    "standard_deviation" : None,
+    "sum_of_reoccurring_data_points" : None,
+    "sum_of_reoccurring_values" : None,
+    "sum_values" : None,
+    "symmetry_looking": [{"r": r * 0.25} for r in range(4)],
+    "variance" : None,
+    "value_count" : [{"value" : 0}],
+    "variance_larger_than_standard_deviation" : None,
+}
+
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
 	#X_filtered = pandas.read_csv(args.x, index_col=0)
-	y = pandas.read_csv(args.y, index_col=0)
-	data_X = pandas.read_csv(args.x, header=0)
-	data_X.astype({'id': int})
+	data_Y = pandas.read_csv(args.y, index_col=0)
+	data_X = pandas.read_csv(args.x, index_col=0)
 	#print (X_filtered.info())
 	#y = pandas.read_csv(args.y, index_col=0, header=None)
 else:
@@ -138,12 +188,15 @@ else:
 		print ('Starting Data Handling')
 		data_X = pandas.DataFrame([],columns=columnNames)
 		data_Y = []
-		outputDataset = reduceScenarioData(outputDataset)
-		#print_progress(0, len(outputDataset), prefix = 'Data Handling:')
+		#outputDataset = reduceScenarioData(outputDataset)
+		print_progress(0, len(outputDataset), prefix = 'Data Handling:')
 		#Data Handling
 		dataSetIdCounter = 0
 		for dataSetID,data in enumerate(outputDataset):
 			dataSetParams = data.replace('.csv','').split('_')
+			if int(dataSetParams[1]) not in [0,1,2,3,4]:
+				print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
+				continue
 			dataSetParamsDict = {}
 			#get dataset parameters as dict
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
@@ -160,10 +213,9 @@ else:
 			#	outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
 			#normalized timeseries
 			#faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
-			faulty = normalize(outputData[xNamesFaulty].values).T
+			faulty = (outputData[xNamesFaulty].values).T
 			#nominal =  normalize((outputData[xNamesNominal].values).T,axis=0)
-			#nominal =  (outputData[xNamesNominal].values).T
-			datasetCutLength = faulty.shape[1]
+			nominal =  (outputData[xNamesNominal].values).T
 			'''
 			nominal =  normalize(outputData[xNamesNominal].values,axis=0)
 			preDataFrame = vstack([tile(dataSetIdCounter,nominal.shape[0]),array(outputData['time']),nominal.T]).T
@@ -184,13 +236,14 @@ else:
 			#for i in range(len(faulty)):
 			#	faulty[i] = savgol_filter(faulty[i],41,3)
 			#	nominal[i] = savgol_filter(nominal[i],41,3)
-		
-			#residuals = faulty - nominal
-			#preDataFrameResiduals = vstack([tile(dataSetID,datasetCutLength),arange(datasetCutLength),residuals]).T
+			
+			residuals = faulty - nominal
+			datasetCutLength = residuals.shape[1]
+			preDataFrameResiduals = vstack([tile(dataSetIdCounter,datasetCutLength),arange(datasetCutLength),residuals]).T
 			#nominalID = (dataSetID*2)
-			faultyID = dataSetID
+			#faultyID = dataSetID
 			#nonimalStack = vstack([tile(nominalID,datasetCutLength),arange(datasetCutLength),nominal]).T
-			faultyStack = vstack([tile(faultyID,datasetCutLength),arange(datasetCutLength),faulty]).T
+			#faultyStack = vstack([tile(faultyID,datasetCutLength),arange(datasetCutLength),faulty]).T
 			
 			'''
 			#plot datset for inspection
@@ -215,37 +268,47 @@ else:
 			#if inputValues[0] != 0:
 			#data_X = pandas.concat([data_X,pandas.DataFrame(nonimalStack,columns=columnNames)],ignore_index=True)
 			#data_Y.append(0)
-			data_X = pandas.concat([data_X,pandas.DataFrame(faultyStack,columns=columnNames)],ignore_index=True)
+			#data_X = pandas.concat([data_X,pandas.DataFrame(faultyStack,columns=columnNames)],ignore_index=True)
 			data_Y.append(int(dataSetParamsDict['scenario']))
-			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
+			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
+			dataSetIdCounter += 1
 			#data_Y.append(inputValues)
 			#data handling
-			#print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
+			print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
 
 		data_Y = pandas.Series(data_Y)
+		embed()
+		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+		data_X.to_csv('X_df_{}.csv'.format(saveTime))
+		data_Y.to_csv('y_ds_{}.csv'.format(saveTime))
 	except Exception as err:
 		print ("Data handling error:", err)
 		embed()
-
+if args.fx and args.fy:
+	print('gotten features dataset')
+else:
 	try:
 		print ('\nStarting Feature Extraction')
 		extractStartTime = time.time()
-		df = data_X
-		y = data_Y
 		FCParameter = 'efficient'
 		extraction_settings = {
 			'comprehensive': ComprehensiveFCParameters(),
 			'efficient': EfficientFCParameters(),
 			'minimal': MinimalFCParameters(),
 		}
-		#X_filtered = extract_relevant_features(df, y, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
+		#X_features = extract_relevant_features(data_X, data_Y, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
+		X_features = extract_features(data_X, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
+		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+		try:
+			X_features.to_csv('X_features_{}.csv'.format(saveTime))
+		except:
+			print('save error') 
+		embed()
 		#saving extracted features
 		#https://github.com/zygmuntz/time-series-classification
 		#print (X_filtered.info())
-		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 		extractEndTime = time.time()
 		#X_filtered.to_csv('X_{}_{}.csv'.format(FCParameter,saveTime))
-		data_X.to_csv('X_{}.csv'.format(saveTime))
 		y.to_csv('y_{}.csv'.format(saveTime))
 		#std = StandardScaler()
 		#std.fit(X_filtered_train.values)
@@ -361,16 +424,19 @@ try:
 		print ("Training: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_train), y_train)))
 		print ("Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test)))
 	'''
+	from sklearn.neural_network import MLPClassifier
+	clf = MLPClassifier(activation='logistic', solver='adam', alpha=1e-3,
+    learning_rate='adaptive', max_iter=1000)
 	estim = HyperoptEstimator(classifier=any_classifier('my_clf'),
 							  preprocessing=any_preprocessing('my_pre'),
 							  algo=tpe.suggest,
 							  max_evals=150,
 							  trial_timeout=120)
 	#pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
-	pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', GradientBoostingClassifier())])
+	pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', clf)])
 	
 	X = pandas.DataFrame(index=y.index)
-	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X, y, test_size=.25)
+	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X, y, test_size=.20)
 	
 	pipeline.set_params(augmenter__timeseries_container=data_X)
 	pipeline.fit(X_filtered_train,y_train)
