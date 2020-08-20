@@ -54,6 +54,7 @@ from sklearn.metrics import classification_report
 from tsfresh import extract_relevant_features
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import confusion_matrix
 
 from hyperopt import tpe,hp
 from hyperopt.fmin import fmin
@@ -64,7 +65,10 @@ from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification
 from hyperopt import tpe
 from sklearn.pipeline import Pipeline
 from tsfresh.examples import load_robot_execution_failures
+from tsfresh.utilities.dataframe_functions import impute
 from tsfresh.transformers import RelevantFeatureAugmenter
+import pickle
+
 print ('\n')
 
 # Print iterations progress
@@ -128,62 +132,63 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	return finalDatasets
 
 feature_settings = {
-    "abs_energy" : None,
-    "absolute_sum_of_changes" : None,
-    "approximate_entropy": [{"m": 2, "r": r} for r in [.1, .3, .5, .7, .9]],
-    "agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
-    "binned_entropy" : [{"max_bins" : 10}],
-    "c3": [{"lag": 3}],
-    "cid_ce": [{"normalize":False}],
-    "count_above_mean" : None,
-    "count_below_mean" : None,
-    "energy_ratio_by_chunks": [{"num_segments" : 5, "segment_focus": i} for i in range(5)],
-    "first_location_of_maximum" : None,
-    "first_location_of_minimum" : None,
-    "has_duplicate" : None,
-    "has_duplicate_max" : None,
-    "has_duplicate_min" : None,
-    "index_mass_quantile": [{"q": q} for q in [0.25, 0.5, 0.75]],
-    "kurtosis" : None,
-    "last_location_of_maximum" : None,
-    "last_location_of_minimum" : None,
-    "length" : None,
-    "longest_strike_above_mean" : None,
-    "longest_strike_below_mean" : None,
-    "maximum" : None,
-    "max_langevin_fixed_point": [{"m": 3, "r": 30}],
-    "mean" : None,
-    "mean_abs_change" : None,
-    "mean_change" : None,
-    "median" : None,
-    "minimum" : None,
-    "number_peaks" : [{"n" : 3}],
-    "number_crossing_m" : [{"m" : 0}],
-    "percentage_of_reoccurring_values_to_all_values" : None,
-    "percentage_of_reoccurring_datapoints_to_all_datapoints" : None,
-    "quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
-    "range_count": [{"min": -1e12, "max": 0}, {"min": 0, "max": 1e12}],
-    "ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3]],
-    "sample_entropy" : None,
-    "skewness" : None,
-    "standard_deviation" : None,
-    "sum_of_reoccurring_data_points" : None,
-    "sum_of_reoccurring_values" : None,
-    "sum_values" : None,
-    "symmetry_looking": [{"r": r * 0.25} for r in range(4)],
-    "variance" : None,
-    "value_count" : [{"value" : 0}],
-    "variance_larger_than_standard_deviation" : None,
+	"abs_energy" : None,
+	"absolute_sum_of_changes" : None,
+	"approximate_entropy": [{"m": 2, "r": r} for r in [.1, .3, .5, .7, .9]],
+	"agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
+	"binned_entropy" : [{"max_bins" : 10}],
+	"c3": [{"lag": 3}],
+	"cid_ce": [{"normalize":False}],
+	"count_above_mean" : None,
+	"count_below_mean" : None,
+	"energy_ratio_by_chunks": [{"num_segments" : 5, "segment_focus": i} for i in range(5)],
+	"first_location_of_maximum" : None,
+	"first_location_of_minimum" : None,
+	"has_duplicate" : None,
+	"has_duplicate_max" : None,
+	"has_duplicate_min" : None,
+	"index_mass_quantile": [{"q": q} for q in [0.25, 0.5, 0.75]],
+	"kurtosis" : None,
+	"last_location_of_maximum" : None,
+	"last_location_of_minimum" : None,
+	"length" : None,
+	"longest_strike_above_mean" : None,
+	"longest_strike_below_mean" : None,
+	"maximum" : None,
+	"max_langevin_fixed_point": [{"m": 3, "r": 30}],
+	"mean" : None,
+	"mean_abs_change" : None,
+	"mean_change" : None,
+	"median" : None,
+	"minimum" : None,
+	"number_peaks" : [{"n" : 3}],
+	"number_crossing_m" : [{"m" : 0}],
+	"percentage_of_reoccurring_values_to_all_values" : None,
+	"percentage_of_reoccurring_datapoints_to_all_datapoints" : None,
+	"quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
+	"range_count": [{"min": -1e12, "max": 0}, {"min": 0, "max": 1e12}],
+	"ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3]],
+	"sample_entropy" : None,
+	"skewness" : None,
+	"standard_deviation" : None,
+	"sum_of_reoccurring_data_points" : None,
+	"sum_of_reoccurring_values" : None,
+	"sum_values" : None,
+	"symmetry_looking": [{"r": r * 0.25} for r in range(4)],
+	"variance" : None,
+	"value_count" : [{"value" : 0}],
+	"variance_larger_than_standard_deviation" : None,
 }
 
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
 	#X_filtered = pandas.read_csv(args.x, index_col=0)
-	data_Y = pandas.read_csv(args.y, index_col=0)
+	data_Y = pandas.read_csv(args.y, index_col=0,squeeze=True) #pandas series
 	data_X = pandas.read_csv(args.x, index_col=0)
+	data_X = data_X.astype({'id': int})
 	#print (X_filtered.info())
 	#y = pandas.read_csv(args.y, index_col=0, header=None)
-else:
+elif not args.x and not args.y and not args.fx and not args.fy:
 	try:
 		print ('Starting Data Handling')
 		data_X = pandas.DataFrame([],columns=columnNames)
@@ -210,7 +215,7 @@ else:
 			inputValues = array([int(dataSetParamsDict[i]) for i in ["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration"]])
 
 			#if dataSetParamsDict['ktDuration'] != 0.0:
-			#	outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
+			#   outputData = outputData[int(dataSetParamsDict['ktInception']*stepsizeFreq):int((dataSetParamsDict['ktInception']+dataSetParamsDict['ktDuration'])*stepsizeFreq+1)]
 			#normalized timeseries
 			#faulty = normalize((outputData[xNamesFaulty].values).T,axis=0)
 			faulty = (outputData[xNamesFaulty].values).T
@@ -221,7 +226,7 @@ else:
 			preDataFrame = vstack([tile(dataSetIdCounter,nominal.shape[0]),array(outputData['time']),nominal.T]).T
 			data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrame,columns=columnNames)],ignore_index=True)
 			data_Y.append(zeros(len(inputValues)))
-			if dataSetParamsDict['scenario'] != 0:	
+			if dataSetParamsDict['scenario'] != 0:  
 				dataSetIdCounter += 1
 				faulty = normalize(outputData[xNamesFaulty].values,axis=0)
 				preDataFrame = vstack([tile(dataSetIdCounter,faulty.shape[0]),array(outputData['time']),faulty.T]).T
@@ -234,8 +239,8 @@ else:
 		
 			#filter implementation (unused)
 			#for i in range(len(faulty)):
-			#	faulty[i] = savgol_filter(faulty[i],41,3)
-			#	nominal[i] = savgol_filter(nominal[i],41,3)
+			#   faulty[i] = savgol_filter(faulty[i],41,3)
+			#   nominal[i] = savgol_filter(nominal[i],41,3)
 			
 			residuals = faulty - nominal
 			datasetCutLength = residuals.shape[1]
@@ -263,7 +268,7 @@ else:
 		
 			#nominal = StandardScaler().fit_transform(nominal)
 			#faulty = StandardScaler().fit_transform(faulty)
-			#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))] 	#.flatten()
+			#outputValues = [np.sqrt(mean_squared_error(nominal.T[i],faulty.T[i])) for i in range(len(xNames))]     #.flatten()
 			#resultsList['nominal'] = [nominal, array([0])] #hard coded nominal output
 			#if inputValues[0] != 0:
 			#data_X = pandas.concat([data_X,pandas.DataFrame(nonimalStack,columns=columnNames)],ignore_index=True)
@@ -277,7 +282,6 @@ else:
 			print_progress(dataSetID, len(outputDataset), prefix = 'Data Handling:')
 
 		data_Y = pandas.Series(data_Y)
-		embed()
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 		data_X.to_csv('X_df_{}.csv'.format(saveTime))
 		data_Y.to_csv('y_ds_{}.csv'.format(saveTime))
@@ -285,7 +289,9 @@ else:
 		print ("Data handling error:", err)
 		embed()
 if args.fx and args.fy:
-	print('gotten features dataset')
+	print ('Importing feature datasets - x: {}, y: {}'.format(args.fx, args.fy))
+	data_Y = pandas.read_csv(args.fy, index_col=0,squeeze=True) #pandas series
+	data_X = pandas.read_csv(args.fx, index_col=0)
 else:
 	try:
 		print ('\nStarting Feature Extraction')
@@ -297,24 +303,19 @@ else:
 			'minimal': MinimalFCParameters(),
 		}
 		#X_features = extract_relevant_features(data_X, data_Y, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
-		X_features = extract_features(data_X, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
+		X_features = extract_features(data_X, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter],impute_function=impute)
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
-		try:
-			X_features.to_csv('X_features_{}.csv'.format(saveTime))
-		except:
-			print('save error') 
-		embed()
+		X_features.to_csv('X_features_{}.csv'.format(saveTime))
+		data_Y.to_csv('y_features_{}.csv'.format(saveTime))
 		#saving extracted features
 		#https://github.com/zygmuntz/time-series-classification
 		#print (X_filtered.info())
-		extractEndTime = time.time()
 		#X_filtered.to_csv('X_{}_{}.csv'.format(FCParameter,saveTime))
-		y.to_csv('y_{}.csv'.format(saveTime))
 		#std = StandardScaler()
 		#std.fit(X_filtered_train.values)
 		#X_filtered_train = std.transform(X_filtered_train.values)
 		#X_filtered_test = std.transform(X_filtered_test.values)
-		print ('Feature Extraction Complete!!, it took {} seconds'.format(extractEndTime-extractStartTime))
+		print ('Feature Extraction Complete!!, it took {} seconds'.format(time.time()-extractStartTime))
 	except Exception as err:
 		print ("Feature Exraction Error:", err)
 		embed()
@@ -323,9 +324,9 @@ try:
 	print ('Starting ML Classifier')
 	def objective(params,X=X_filtered, Y=y):
 		#params = {
-		#	'max_depth': int(params['max_depth']),
-		#	'gamma': "{:.3f}".format(params['gamma']),
-		#	'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
+		#   'max_depth': int(params['max_depth']),
+		#   'gamma': "{:.3f}".format(params['gamma']),
+		#   'colsample_bytree': '{:.3f}'.format(params['colsample_bytree']),
 		#}
 		
 		clf = XGBClassifier(
@@ -425,27 +426,81 @@ try:
 		print ("Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test)))
 	'''
 	from sklearn.neural_network import MLPClassifier
-	clf = MLPClassifier(activation='logistic', solver='adam', alpha=1e-3,
-    learning_rate='adaptive', max_iter=1000)
+	#clf = MLPClassifier(activation='logistic', solver='adam', alpha=1e-3,learning_rate='adaptive', max_iter=1000)
+	clf = MLPClassifier()
 	estim = HyperoptEstimator(classifier=any_classifier('my_clf'),
 							  preprocessing=any_preprocessing('my_pre'),
 							  algo=tpe.suggest,
 							  max_evals=150,
 							  trial_timeout=120)
 	#pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
-	pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', clf)])
-	
-	X = pandas.DataFrame(index=y.index)
-	X_filtered_train, X_filtered_test, y_train, y_test = train_test_split(X, y, test_size=.20)
-	
-	pipeline.set_params(augmenter__timeseries_container=data_X)
-	pipeline.fit(X_filtered_train,y_train)
-	
-	y_pred = pipeline.predict(X_filtered_test)
-	print(accuracy_score(y_te,y_pred))
-	print(classification_report(y_te,y_pred))
+
+	clf = GradientBoostingClassifier()
+	ada = AdaBoostClassifier(base_estimator=clf)
+	ppl = Pipeline([
+		('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),
+		('classifier', ada)
+	  ])
+
+	X_train, X_test, y_train, y_test = train_test_split(data_X, data_Y, test_size=.20)
+
+	print('calculating relevant_features')
+	relevant_features = set()
+	for label in data_Y.unique():
+		y_train_binary = y_train == label
+		X_train_filtered = select_features(X_train, y_train_binary)
+		print("Number of relevant features for class {}: {}/{}".format(label, X_train_filtered.shape[1], X_train.shape[1]))
+		relevant_features = relevant_features.union(set(X_train_filtered.columns))
+
+
+	# In[ ]:
+
+
+	print('Length of relevant_features:',len(relevant_features))
+	embed()
+	X_train_filtered = X_train[list(relevant_features)]
+	X_test_filtered = X_test[list(relevant_features)]
+
+	estim.fit( X_train_filtered, y_train )
+
+	# Show the results
+
+	print(estim.score(X_test, y_test))
+
+	print(estim.best_model())
 	embed()
 
+	ada.fit(X_train_filtered, y_train)
+	y_pred = ada.predict(X_test_filtered)
+	print(classification_report(y_test, y_pred))
+	print(accuracy_score(y_test, y_pred))
+	print(confusion_matrix(y_test, y_pred))
+
+
+	# we keep only those features that we selected above, for both the train and test set
+
+	# In[ ]:
+	'''
+
+	X_train_filtered = X_train[list(relevant_features)]
+	X_test_filtered = X_test[list(relevant_features)]
+	
+	X = pandas.DataFrame(index=data_Y.index)
+	
+	df_ts_train = data_X[data_X["id"].isin(y_train.index)]
+	df_ts_test = data_X[data_X["id"].isin(y_test.index)]
+	ppl.set_params(augmenter__timeseries_container=df_ts_train);
+	ppl.fit(X_train, y_train)
+	with open("pipeline.pkl", "wb") as f:
+		pickle.dump(ppl, f)
+	with open("pipeline.pkl", "rb") as f:
+		ppk = pickle.load(f)
+	ppk.set_params(augmenter__timeseries_container=df_ts_test);
+	y_pred = ppl.predict(X_test)
+	print(classification_report(y_test, y_pred))
+	print(accuracy_score(y_test, y_pred))
+	print(confusion_matrix(y_test, y_pred))
+	'''
 
 except Exception as err:
 	print ("ML Classifier Error:\n")
