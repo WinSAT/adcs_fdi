@@ -305,7 +305,9 @@ else:
 		#X_features = extract_relevant_features(data_X, data_Y, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
 		X_features = extract_features(data_X, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter],impute_function=impute)
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
-		X_features.to_csv('X_features_{}.csv'.format(saveTime))
+		data_X = X_features
+		
+		data_X.to_csv('X_features_{}.csv'.format(saveTime))
 		data_Y.to_csv('y_features_{}.csv'.format(saveTime))
 		#saving extracted features
 		#https://github.com/zygmuntz/time-series-classification
@@ -425,9 +427,9 @@ try:
 		print ("Training: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_train), y_train)))
 		print ("Test Set: {:6.5f}".format(accuracy_score(tree.predict(X_filtered_test), y_test)))
 	'''
-	from sklearn.neural_network import MLPClassifier
+	#from sklearn.neural_network import MLPClassifier
 	#clf = MLPClassifier(activation='logistic', solver='adam', alpha=1e-3,learning_rate='adaptive', max_iter=1000)
-	clf = MLPClassifier()
+	#clf = MLPClassifier()
 	estim = HyperoptEstimator(classifier=any_classifier('my_clf'),
 							  preprocessing=any_preprocessing('my_pre'),
 							  algo=tpe.suggest,
@@ -435,15 +437,20 @@ try:
 							  trial_timeout=120)
 	#pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
 
-	clf = GradientBoostingClassifier()
-	ada = AdaBoostClassifier(base_estimator=clf)
-	ppl = Pipeline([
-		('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),
-		('classifier', ada)
-	  ])
+	#ppl = Pipeline([
+	#	('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),
+	#	('classifier', ada)
+	#  ])
 
 	X_train, X_test, y_train, y_test = train_test_split(data_X, data_Y, test_size=.20)
-
+	'''
+	y_train = y_train.values.reshape(-1,1)
+	y_test = y_test.values.reshape(-1,1)
+	enc = OneHotEncoder()
+	enc.fit(y_train)
+	y_train = enc.transform(y_train).toarray()
+	y_test = enc.transform(y_test).toarray()
+	'''
 	print('calculating relevant_features')
 	relevant_features = set()
 	for label in data_Y.unique():
@@ -457,24 +464,33 @@ try:
 
 
 	print('Length of relevant_features:',len(relevant_features))
-	embed()
 	X_train_filtered = X_train[list(relevant_features)]
 	X_test_filtered = X_test[list(relevant_features)]
 
 	estim.fit( X_train_filtered, y_train )
+	saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+	with open("HyperoptEstimator_{}.pkl".format(saveTime), "wb") as f:
+		pickle.dump(estim, f)
+	X_train.to_csv('X_train_{}.csv'.format(saveTime))
+	X_test.to_csv('X_test_{}.csv'.format(saveTime))
+	y_train.to_csv('y_train_{}.csv'.format(saveTime))
+	y_test.to_csv('y_test_{}.csv'.format(saveTime))
+	#with open(eName, "rb") as f:
+	#	estim = pickle.load(f)
 
 	# Show the results
 
-	print(estim.score(X_test, y_test))
-
+	print(estim.score(X_test_filtered, y_test))
 	print(estim.best_model())
-	embed()
-
-	ada.fit(X_train_filtered, y_train)
-	y_pred = ada.predict(X_test_filtered)
+	clf = estim.best_model()['learner']
+	clf.fit(X_train_filtered, y_train)
+	y_pred = clf.predict(X_test_filtered)
 	print(classification_report(y_test, y_pred))
 	print(accuracy_score(y_test, y_pred))
 	print(confusion_matrix(y_test, y_pred))
+	embed()
+	#clf = GradientBoostingClassifier()
+	ada = AdaBoostClassifier(base_estimator=clf)
 
 
 	# we keep only those features that we selected above, for both the train and test set
