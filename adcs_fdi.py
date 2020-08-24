@@ -303,6 +303,7 @@ else:
 			'minimal': MinimalFCParameters(),
 		}
 		#X_features = extract_relevant_features(data_X, data_Y, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
+		embed()
 		X_features = extract_features(data_X, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter],impute_function=impute)
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 		data_X = X_features
@@ -443,13 +444,15 @@ try:
 	#  ])
 
 	X_train, X_test, y_train, y_test = train_test_split(data_X, data_Y, test_size=.20)
-	'''
+	
 	y_train = y_train.values.reshape(-1,1)
 	y_test = y_test.values.reshape(-1,1)
+	'''
 	enc = OneHotEncoder()
 	enc.fit(y_train)
 	y_train = enc.transform(y_train).toarray()
 	y_test = enc.transform(y_test).toarray()
+	
 	'''
 	print('calculating relevant_features')
 	relevant_features = set()
@@ -458,15 +461,21 @@ try:
 		X_train_filtered = select_features(X_train, y_train_binary)
 		print("Number of relevant features for class {}: {}/{}".format(label, X_train_filtered.shape[1], X_train.shape[1]))
 		relevant_features = relevant_features.union(set(X_train_filtered.columns))
-
-
-	# In[ ]:
-
-
+	
 	print('Length of relevant_features:',len(relevant_features))
+
 	X_train_filtered = X_train[list(relevant_features)]
 	X_test_filtered = X_test[list(relevant_features)]
 
+	'''
+	def cleanFeatures(df):
+		df = df.dropna(axis=1)
+		df = df.dropna(axis=0)
+		df[(df > 0) & (df < 1e-10)] = 0
+		return df
+	X_train_filtered = cleanFeatures(X_train)#[list(relevant_features)]
+	X_test_filtered = cleanFeatures(X_test)#[list(relevant_features)]
+	'''
 	estim.fit( X_train_filtered, y_train )
 	saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 	with open("HyperoptEstimator_{}.pkl".format(saveTime), "wb") as f:
@@ -482,6 +491,12 @@ try:
 
 	print(estim.score(X_test_filtered, y_test))
 	print(estim.best_model())
+	y_pred = estim.predict(X_test_filtered)
+	print('Estim no retrain:')
+	print(classification_report(y_test, y_pred))
+	print(accuracy_score(y_test, y_pred))
+	print(confusion_matrix(y_test, y_pred))
+	print('Estim  retrain:')
 	clf = estim.best_model()['learner']
 	clf.fit(X_train_filtered, y_train)
 	y_pred = clf.predict(X_test_filtered)
