@@ -12,6 +12,7 @@
 ##################################################
 
 from numpy import *
+import numpy as np
 import sys, os
 import matplotlib.pyplot as plt
 import time
@@ -98,7 +99,8 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 #
 #import lightgbm as lgbm
 
-outputFolder = "output_625"
+#outputFolder = "output_625"
+outputFolder = "output_300_constSeverity_csvs"
 stepsizeFreq = 10.0
 
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
@@ -458,10 +460,6 @@ try:
 		X_train_filtered = select_features(X_train, y_train_binary)
 		print("Number of relevant features for class {}: {}/{}".format(label, X_train_filtered.shape[1], X_train.shape[1]))
 		relevant_features = relevant_features.union(set(X_train_filtered.columns))
-
-
-	# In[ ]:
-
 
 	print('Length of relevant_features:',len(relevant_features))
 	X_train_filtered = X_train[list(relevant_features)]
