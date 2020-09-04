@@ -2,10 +2,11 @@ from hpsklearn import HyperoptEstimator, extra_trees
 from sklearn.datasets import fetch_openml
 from hyperopt import tpe
 import numpy as np
+from IPython import embed
 
 # Download the data and split into training and test sets
-from sklearn.datasets import fetch_mldata
-digits = fetch_mldata('MNIST original', transpose_data=True, data_home='files')
+#from sklearn.datasets import fetch_mldata
+digits = fetch_openml('mnist_784')
 
 X = digits.data
 y = digits.target
@@ -27,7 +28,7 @@ estim = HyperoptEstimator(classifier=extra_trees('my_clf'),
                           trial_timeout=300)
 
 # Search the hyperparameter space based on the data
-
+embed()
 estim.fit( X_train, y_train )
 
 # Show the results
