@@ -62,7 +62,7 @@ from hyperopt.fmin import fmin
 #from xgboost import XGBClassifier
 from datetime import datetime
 import time
-from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_classifier, min_max_scaler, gradient_boosting, any_preprocessing
+from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_classifier, min_max_scaler, gradient_boosting, any_preprocessing, extra_trees
 from hyperopt import tpe
 from sklearn.pipeline import Pipeline
 from tsfresh.examples import load_robot_execution_failures
@@ -90,7 +90,7 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 	str_format = "{0:." + str(decimals) + "f}"
 	percents = str_format.format(100 * (iteration / float(total)))
 	filled_length = int(round(bar_length * iteration / float(total)))
-	bar = '*' * filled_length + '-' * (bar_length - filled_length)
+	bar = '█' * filled_length + '-' * (bar_length - filled_length)
 
 	sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
 
@@ -102,8 +102,8 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 #
 #import lightgbm as lgbm
 
-outputFolder = "output_625"
-#outputFolder = "output_300_constSeverity_csvs"
+#outputFolder = "output_625"
+outputFolder = "output_300_constSeverity_csvs"
 stepsizeFreq = 10.0
 
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
@@ -117,6 +117,11 @@ parser.add_argument('--x', type=str, help='X pandas dataset')
 parser.add_argument('--y', type=str, help='Y pandas dataset')
 parser.add_argument('--fx', type=str, help='X features dataset')
 parser.add_argument('--fy', type=str, help='Y features dataset')
+parser.add_argument('--ntrain', type=str, help='X features dataset')
+parser.add_argument('--ntest', type=str, help='Y features dataset')
+parser.add_argument('--ytrain', type=str, help='X features dataset')
+parser.add_argument('--ytest', type=str, help='Y features dataset')
+
 parser.add_argument('-cs','--constrainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 parser.add_argument('-cn','--constrainedNumDatasets', type=str, help='number of datasets from each scenario')
 args = parser.parse_args()
@@ -193,7 +198,7 @@ if args.x and args.y:
 	data_X = data_X.astype({'id': int})
 	#print (X_filtered.info())
 	#y = pandas.read_csv(args.y, index_col=0, header=None)
-elif not args.x and not args.y and not args.fx and not args.fy:
+elif not args.x and not args.fx and not args.ntrain:
 	try:
 		print ('Starting Data Handling')
 		#data_X = pandas.DataFrame([],columns=columnNames)
@@ -281,10 +286,12 @@ elif not args.x and not args.y and not args.fx and not args.fy:
 			#data_X = pandas.concat([data_X,pandas.DataFrame(nonimalStack,columns=columnNames)],ignore_index=True)
 			#data_Y.append(0)
 			#data_X = pandas.concat([data_X,pandas.DataFrame(faultyStack,columns=columnNames)],ignore_index=True)
-			data_Y.append(0)
-			data_X.append(pandas.DataFrame(nominal.T))
-			if int(dataSetParamsDict['scenario']) != 0:
-				data_Y.append(int(dataSetParamsDict['scenario']))
+			#data_Y.append(0)
+			#data_X.append(pandas.DataFrame(nominal.T))
+			data_Y.append(int(dataSetParamsDict['scenario']))
+			if int(dataSetParamsDict['scenario']) == 0:
+				data_X.append(pandas.DataFrame(nominal.T))
+			else:
 				data_X.append(pandas.DataFrame(faulty.T))
 			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
 			#data_Y.append(int(dataSetParamsDict['scenario']))
@@ -305,7 +312,7 @@ if args.fx and args.fy:
 	print ('Importing feature datasets - x: {}, y: {}'.format(args.fx, args.fy))
 	data_Y = pandas.read_csv(args.fy, index_col=0,squeeze=True) #pandas series
 	data_X = pandas.read_csv(args.fx, index_col=0)
-else:
+elif not args.ntrain:
 	try:
 		print ('\nStarting Feature Extraction')
 		extractStartTime = time.time()
@@ -318,11 +325,14 @@ else:
 		#X_features = extract_relevant_features(data_X, data_Y, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter])
 		#X_features = extract_features(data_X, column_id='id', column_sort='time', default_fc_parameters=extraction_settings[FCParameter],impute_function=impute)
 		cfg = tsfel.get_features_by_domain()
+		# dataset sampling frequency
+		fs = 10
 		X_train, X_test, y_train, y_test = train_test_split(data_X, data_Y, test_size=.20)
 		y_train = array(y_train).ravel()
 		y_test = array(y_test).ravel()
-		X_train_fs = tsfel.time_series_features_extractor(cfg, X_train)
-		X_test_fs = tsfel.time_series_features_extractor(cfg, X_test)
+		X_train_fs = tsfel.time_series_features_extractor(cfg, X_train, fs=fs)
+		X_test_fs = tsfel.time_series_features_extractor(cfg, X_test, fs=fs)
+
 
 		def fill_missing_values(df):
 			""" Handle eventual missing data. Strategy: replace with mean.
@@ -357,6 +367,11 @@ else:
 		nX_test = min_max_scaler.transform(X_test_fs)
 
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
+
+		pandas.DataFrame(nX_train).to_csv('nX_train_{}.csv'.format(saveTime))
+		pandas.DataFrame(nX_test).to_csv('nX_test_{}.csv'.format(saveTime))
+		pandas.DataFrame(y_train).to_csv('y_train_{}.csv'.format(saveTime))
+		pandas.DataFrame(y_test).to_csv('y_test_{}.csv'.format(saveTime))
 		
 		
 		#data_X.to_csv('X_features_{}.csv'.format(saveTime))
@@ -373,7 +388,16 @@ else:
 	except Exception as err:
 		print ("Feature Exraction Error:", err)
 		embed()
+if args.ntrain:
+	print ('Importing train and test datasets - ntrain: {}, ntest: {}, ytrain: {}, ytest: {}'.format(args.ntrain, args.ntest, args.ytrain, args.ytest))
+	#data_Y = pandas.read_csv(args.fy, index_col=0,squeeze=True) #pandas series
+	nX_train = array(pandas.read_csv(args.ntrain, index_col=0))
+	nX_test = array(pandas.read_csv(args.ntest, index_col=0))
+	y_train = array(pandas.read_csv(args.ytrain, index_col=0)).ravel()
+	y_test = array(pandas.read_csv(args.ytest, index_col=0)).ravel()
+
 try:
+	print('\nStart Machine Model Learning')
 	'''
 	print ('Starting ML Classifier')
 	def objective(params,X=X_filtered, Y=y):
@@ -483,11 +507,7 @@ try:
 	#clf = MLPClassifier(activation='logistic', solver='adam', alpha=1e-3,learning_rate='adaptive', max_iter=1000)
 	#clf = MLPClassifier()
 	
-	estim = HyperoptEstimator(classifier=any_classifier('my_clf'),
-							  preprocessing=any_preprocessing('my_pre'),
-							  algo=tpe.suggest,
-							  max_evals=150,
-							  trial_timeout=120)
+	#estim = HyperoptEstimator(classifier=any_classifier('my_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120)
 	
 	#pipeline = Pipeline([('augmenter', RelevantFeatureAugmenter(column_id='id', column_sort='time')),('classifier', estim)])
 
@@ -519,20 +539,27 @@ try:
 	#X_train_filtered = X_train[list(relevant_features)]
 	#X_test_filtered = X_test[list(relevant_features)]
 
+	classifiers = {
+		'GradientBoostingClassifier': GradientBoostingClassifier(),
+		'RandomForestClassifier': RandomForestClassifier(),
+		'DecisionTreeClassifier': DecisionTreeClassifier(),
+		'Hyperopt GradientBoostingClassifier': HyperoptEstimator(classifier=gradient_boosting('GBC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+		'Hyperopt RandomForestClassifier': HyperoptEstimator(classifier=random_forest('RFC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+		'Hyperopt DecisionTreeClassifier': HyperoptEstimator(classifier=decision_tree('DTC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+		'Hyperopt ExtraTrees': HyperoptEstimator(classifier=extra_trees('ETC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
 
-	classifier = RandomForestClassifier()
-	classifier = AdaBoostClassifier(base_estimator=classifier)
+	}
 	# Train the classifier
-	classifier.fit(nX_train, y_train)
+	for clfName,clf in classifiers.items():
+		print(clfName,'\n','-'*30)
+		clf.fit(nX_train, y_train)
+		y_test_predict = clf.predict(nX_test)
 
-	# Predict test data
-	y_test_predict = classifier.predict(nX_test)
-
-	# Get the classification report
-	accuracy = accuracy_score(y_test, y_test_predict) * 100
-	print(classification_report(y_test, y_test_predict))
-	print("Accuracy: " + str(accuracy) + '%')
-	print(confusion_matrix(y_test, y_test_predict))
+		accuracy = accuracy_score(y_test, y_test_predict) * 100
+		print(classification_report(y_test, y_test_predict))
+		print("Accuracy: " + str(accuracy) + '%')
+		print(confusion_matrix(y_test, y_test_predict))
+	embed()
 	estim.fit( nX_train, y_train.ravel())
 	#saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 	#with open("HyperoptEstimator_{}.pkl".format(saveTime), "wb") as f:
