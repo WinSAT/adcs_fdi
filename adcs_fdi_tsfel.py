@@ -84,7 +84,6 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
 
-
 print ('\n')
 
 # Print iterations progress
@@ -117,6 +116,7 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 #outputFolder = "output_625"
 #outputFolder = "output_300_constSeverity_csvs"
 outputFolder = "output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
+
 stepsizeFreq = 10.0
 
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
@@ -203,7 +203,7 @@ feature_settings = {
 	"variance_larger_than_standard_deviation" : None,
 }
 
-datasetLimit = 1000
+datasetLimit = 2000
 datasetLimiter = {k:0 for k in [0,1,2,3,4]}
 
 
@@ -238,6 +238,7 @@ elif not args.x and not args.fx and not args.ntrain:
 				continue
 			else:
 				datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
+
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
 			outputData = pandas.read_csv(outputFolder+"/"+data)
@@ -309,16 +310,11 @@ elif not args.x and not args.fx and not args.ntrain:
 			#data_X = pandas.concat([data_X,pandas.DataFrame(faultyStack,columns=columnNames)],ignore_index=True)
 			#data_Y.append(0)
 			#data_X.append(pandas.DataFrame(nominal.T))
-			#data_X.append(pandas.DataFrame(faulty.T))
-			#data_Y.append(int(dataSetParamsDict['scenario']))
-
+			data_Y.append(int(dataSetParamsDict['scenario']))
 			if int(dataSetParamsDict['scenario']) == 0:
 				data_X.append(pandas.DataFrame(nominal.T))
-				data_Y.append(int(dataSetParamsDict['scenario']))
 			else:
 				data_X.append(pandas.DataFrame(faulty.T))
-				data_Y.append(1)
-				#data_Y.append(1) #use if only 2 classes: fauly/non-fault
 			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
 			#data_Y.append(int(dataSetParamsDict['scenario']))
 			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
@@ -388,7 +384,7 @@ elif not args.ntrain:
 		X_test_fs = selector.transform(X_test_fs)
 		
 		# Normalising Features
-		min_max_scaler = preprocessing.Normalizer()
+		min_max_scaler = preprocessing.StandardScaler()
 		nX_train = min_max_scaler.fit_transform(X_train_fs)
 		nX_test = min_max_scaler.transform(X_test_fs)
 
@@ -700,11 +696,26 @@ try:
 	# Train the classifier
 	for clfName,clf in classifiers.items():
 		print('\n','-'*30,'\n',clfName+':')
+
+	classifiers = {
+		'GradientBoostingClassifier': GradientBoostingClassifier(),
+		'RandomForestClassifier': RandomForestClassifier(),
+		'DecisionTreeClassifier': DecisionTreeClassifier(),
+		'Hyperopt GradientBoostingClassifier': HyperoptEstimator(classifier=gradient_boosting('GBC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+		'Hyperopt RandomForestClassifier': HyperoptEstimator(classifier=random_forest('RFC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+		'Hyperopt DecisionTreeClassifier': HyperoptEstimator(classifier=decision_tree('DTC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+		'Hyperopt ExtraTrees': HyperoptEstimator(classifier=extra_trees('ETC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+
+	}
+	# Train the classifier
+	for clfName,clf in classifiers.items():
+		print(clfName,'\n','-'*30)
 		clf.fit(nX_train, y_train)
 		y_test_predict = clf.predict(nX_test)
 
 		accuracy = accuracy_score(y_test, y_test_predict) * 100
 		#print(classification_report(y_test, y_test_predict))
+		print(classification_report(y_test, y_test_predict))
 		print("Accuracy: " + str(accuracy) + '%')
 		print(confusion_matrix(y_test, y_test_predict))
 	embed()
