@@ -115,7 +115,8 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 
 #outputFolder = "output_625"
 #outputFolder = "output_300_constSeverity_csvs"
-outputFolder = "output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
+#outputFolder = "output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
+outputFolder = "output_1000_constSeverity_singleFaults_randPre30Inception_remainDuration"
 
 stepsizeFreq = 10.0
 
@@ -203,7 +204,7 @@ feature_settings = {
 	"variance_larger_than_standard_deviation" : None,
 }
 
-datasetLimit = 2000
+datasetLimit = 800
 datasetLimiter = {k:0 for k in [0,1,2,3,4]}
 
 
@@ -314,6 +315,12 @@ elif not args.x and not args.fx and not args.ntrain:
 			if int(dataSetParamsDict['scenario']) == 0:
 				data_X.append(pandas.DataFrame(nominal.T))
 			else:
+				#plt.clf()
+				#ttl = array(['{} = {}'.format(i,str(int(dataSetParamsDict[i]))) for i in ["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration"]])
+				#plt.title(', '.join(ttl))
+				#plt.plot(nominal.T,c='b');
+				#plt.plot(faulty.T,c='r');
+				#plt.savefig('dd_{}_{}.png'.format(str(int(dataSetParamsDict['scenario'])),dataSetID))
 				data_X.append(pandas.DataFrame(faulty.T))
 			#data_X = pandas.concat([data_X,pandas.DataFrame(preDataFrameResiduals,columns=columnNames)],ignore_index=True)
 			#data_Y.append(int(dataSetParamsDict['scenario']))
@@ -695,24 +702,9 @@ try:
 	cv = ShuffleSplit(n_splits=100, test_size=0.2, random_state=0)
 	# Train the classifier
 	for clfName,clf in classifiers.items():
-		print('\n','-'*30,'\n',clfName+':')
-
-	classifiers = {
-		'GradientBoostingClassifier': GradientBoostingClassifier(),
-		'RandomForestClassifier': RandomForestClassifier(),
-		'DecisionTreeClassifier': DecisionTreeClassifier(),
-		'Hyperopt GradientBoostingClassifier': HyperoptEstimator(classifier=gradient_boosting('GBC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
-		'Hyperopt RandomForestClassifier': HyperoptEstimator(classifier=random_forest('RFC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
-		'Hyperopt DecisionTreeClassifier': HyperoptEstimator(classifier=decision_tree('DTC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
-		'Hyperopt ExtraTrees': HyperoptEstimator(classifier=extra_trees('ETC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
-
-	}
-	# Train the classifier
-	for clfName,clf in classifiers.items():
 		print(clfName,'\n','-'*30)
 		clf.fit(nX_train, y_train)
 		y_test_predict = clf.predict(nX_test)
-
 		accuracy = accuracy_score(y_test, y_test_predict) * 100
 		#print(classification_report(y_test, y_test_predict))
 		print(classification_report(y_test, y_test_predict))
