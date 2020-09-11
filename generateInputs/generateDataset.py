@@ -5,7 +5,7 @@ import random
 from IPython import embed
 
 numRW = 4
-datasetSize = 5000 #per scenario
+datasetSize = 1000 #per scenario
 maxTime = 60 #seconds
 timeOffset = 5
 
@@ -17,7 +17,6 @@ vbusNominal = 6
 vbusFaultDeviation = 2
 vbusFaultDeviationStep = 0.25
 
-
 def generateFaultScenarioDict(numRW=numRW, singleFaults=False):
 	rw = np.arange(numRW)+1
 	faultDict = [[0]]
@@ -27,19 +26,22 @@ def generateFaultScenarioDict(numRW=numRW, singleFaults=False):
 			break
 	return {idx:i for idx,i in enumerate(faultDict)}
 
-def randStartTime(maxNum=maxTime, N=datasetSize,timeOffset=timeOffset):
+def randStartTime(maxNum=30, N=datasetSize,timeOffset=timeOffset):
 	return np.random.randint(timeOffset, (maxNum-timeOffset), size=N)
+	#return 5.0*np.ones(datasetSize)
 
 def randDuration(startTimes, maxNum=maxTime, timeOffset=timeOffset):
-	return np.array([np.random.randint(1,(maxNum+1-timeOffset)-t) for t in startTimes]) #removal of +1 allows min 1 sec duration
+	#return np.array([np.random.randint(1,(maxNum+1-timeOffset)-t) for t in startTimes]) #removal of +1 allows min 1 sec duration
+	#return maxTime*np.ones(len(startTimes))
+	return np.array([int(maxTime-t) for t in startTimes])
 
 def randKtSeverity(ktNominal=ktNominal, ktFaultDeviation=ktFaultDeviation, N=datasetSize):
-	#return (2*ktFaultDeviation)*np.random.random_sample(N)+(ktNominal-ktFaultDeviation)
-	return np.ones(N)*(ktNominal+ktFaultDeviation)
+	return (2*ktFaultDeviation)*np.random.random_sample(N)+(ktNominal-ktFaultDeviation)
+	#return np.ones(N)*(ktNominal+ktFaultDeviation)
 
 def randVbusSeverity(vbusNominal=vbusNominal, dev=vbusFaultDeviation, step=vbusFaultDeviationStep, N=datasetSize):
-	#return np.random.choice(np.arange(vbusNominal-dev,vbusNominal+dev+step,vbusFaultDeviationStep),N)
-	return np.ones(N)*(vbusNominal+vbusFaultDeviation)
+	return np.random.choice(np.arange(vbusNominal-dev,vbusNominal+dev+step,vbusFaultDeviationStep),N)
+	#return np.ones(N)*(vbusNominal+vbusFaultDeviation)
 
 faultScenarioDict = generateFaultScenarioDict(singleFaults=True)
 totalResults = np.array(["scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]).T
@@ -72,7 +74,7 @@ for scenario in faultScenarioDict.keys():
 nums = np.hstack((["num"],np.arange(totalResults.shape[0]-1)))
 totalResults = np.vstack((nums,totalResults.T)).T
 
-with open("adcs_fdi_inputs_{}_constSeverity_singleFaults.csv".format(datasetSize), 'w') as csvFile:
+with open("adcs_fdi_inputs_{}_constSeverity_singleFaults_randPre30Inception_remainDuration.csv".format(datasetSize), 'w') as csvFile:
     writer = csv.writer(csvFile)
     writer.writerows(totalResults)
 
