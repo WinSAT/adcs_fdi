@@ -1,0 +1,8 @@
+case 3:
+- Random sevirity for kt and vbus: value +- rand(deviation)
+- Random inception time from 5-55
+- Duration <30
+
+output_1000_randomSeverity_singleFaults_5to55Inception_randRemainDuration
+-----------------------------------------------------------	----------------
+

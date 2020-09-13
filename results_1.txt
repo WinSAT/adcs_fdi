@@ -1,0 +1,123 @@
+Results for:
+case 1:
+- 1000 datapoints per scenario
+- random combination of kt and Vbus faults
+- Random sevirity for kt and vbus: value +- rand(deviation)
+- Random inception time for kt and vbus from 0-10 (same inception time for both)
+- Fault duration from inception to end of sim
+
+case 2:
+- Random inception time for kt and vbus from 0-10 (same inception time for both)
+- Fault duration randint between 10-20 seconds
+
+case 3:
+- Random sevirity for kt and vbus: value +- rand(deviation)
+- Random inception time from 5-55
+- Duration <30
+
+
+output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration
+---------------------------------------------------------------------------
+
+GradientBoostingClassifier
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.64      0.95      0.76       175
+           1       1.00      0.82      0.90       152
+           2       0.96      0.86      0.91       151
+           3       0.95      0.76      0.84       169
+           4       0.85      0.81      0.83       154
+
+    accuracy                           0.84       801
+   macro avg       0.88      0.84      0.85       801
+weighted avg       0.87      0.84      0.85       801
+
+Accuracy: 84.01997503121099%
+[[166   0   2   1   6]
+ [ 16 125   0   1  10]
+ [ 17   0 130   3   1]
+ [ 36   0   0 128   5]
+ [ 25   0   3   2 124]]
+Decision Tree
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.44      0.99      0.61       175
+           1       0.81      0.55      0.66       152
+           2       0.97      0.44      0.61       151
+           3       0.98      0.33      0.49       169
+           4       0.54      0.64      0.58       154
+
+    accuracy                           0.60       801
+   macro avg       0.75      0.59      0.59       801
+weighted avg       0.74      0.60      0.59       801
+
+Accuracy: 59.55056179775281%
+[[173   0   0   0   2]
+ [ 24  84   1   1  42]
+ [ 45  15  67   0  24]
+ [ 97   1   0  55  16]
+ [ 51   4   1   0  98]]
+Random Forest
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.32      0.23      0.27       175
+           1       0.31      0.28      0.29       152
+           2       0.19      0.21      0.20       151
+           3       0.25      0.25      0.25       169
+           4       0.17      0.21      0.19       154
+
+    accuracy                           0.24       801
+   macro avg       0.25      0.24      0.24       801
+weighted avg       0.25      0.24      0.24       801
+
+Accuracy: 23.72034956304619%
+[[41 20 31 35 48]
+ [19 42 29 29 33]
+ [19 31 32 26 43]
+ [35 19 39 42 34]
+ [16 25 41 39 33]]
+Neural Net
+ ------------------------------
+            precision    recall  f1-score   support
+
+           0       0.42      0.49      0.45       175
+           1       0.88      0.61      0.72       152
+           2       0.67      0.68      0.67       151
+           3       0.54      0.55      0.54       169
+           4       0.51      0.54      0.52       154
+
+    accuracy                           0.57       801
+   macro avg       0.60      0.57      0.58       801
+weighted avg       0.59      0.57      0.58       801
+
+Accuracy: 56.92883895131086%
+[[ 86   6  13  32  38]
+ [ 19  92  12  13  16]
+ [ 26   2 102  12   9]
+ [ 39   3  17  93  17]
+ [ 37   2   9  23  83]]
+AdaBoost
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.62      0.87      0.72       175
+           1       0.53      0.49      0.51       152
+           2       0.56      0.46      0.51       151
+           3       0.79      0.41      0.54       169
+           4       0.34      0.45      0.39       154
+
+    accuracy                           0.54       801
+   macro avg       0.57      0.54      0.53       801
+weighted avg       0.57      0.54      0.54       801
+
+Accuracy: 54.18227215980025%
+[[152   2   2   9  10]
+ [ 13  74  10   2  53]
+ [ 15  19  70   5  42]
+ [ 33   6  31  69  30]
+ [ 32  38  13   2  69]]
+
+ Tensorflow: Test accuracy: 0.851000

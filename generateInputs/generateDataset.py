@@ -7,7 +7,8 @@ from IPython import embed
 numRW = 4
 datasetSize = 1000 #per scenario
 maxTime = 60 #seconds
-timeOffset = 5
+#startIncpetionRange = [0,10] #case 1 and 2
+startIncpetionRange = [5,55] #case 3
 
 ktNominal = 0.029
 ktFaultDeviation = 0.002
@@ -20,20 +21,22 @@ vbusFaultDeviationStep = 0.25
 def generateFaultScenarioDict(numRW=numRW, singleFaults=False):
 	rw = np.arange(numRW)+1
 	faultDict = [[0]]
-	for i in xrange(1,len(rw)+1):
+	for i in range(1,len(rw)+1):
 		faultDict += [list(i) for i in list(itertools.combinations(rw,i))]
 		if singleFaults:
 			break
 	return {idx:i for idx,i in enumerate(faultDict)}
 
-def randStartTime(maxNum=30, N=datasetSize,timeOffset=timeOffset):
-	return np.random.randint(timeOffset, (maxNum-timeOffset), size=N)
+def randStartTime(startIncpetionRange=startIncpetionRange, N=datasetSize):
+	return np.random.randint(*startIncpetionRange, size=N)
 	#return 5.0*np.ones(datasetSize)
 
-def randDuration(startTimes, maxNum=maxTime, timeOffset=timeOffset):
+def randDuration(startTimes, N=datasetSize):
 	#return np.array([np.random.randint(1,(maxNum+1-timeOffset)-t) for t in startTimes]) #removal of +1 allows min 1 sec duration
 	#return maxTime*np.ones(len(startTimes))
-	return np.array([int(maxTime-t) for t in startTimes])
+	#return np.array([int(maxTime-t) for t in startTimes]) #case 1
+	#return np.random.randint(10,20,size=N) #case 2
+	return np.array([max(5,np.random.randint(maxTime-t)) for t in startTimes]) #case 3
 
 def randKtSeverity(ktNominal=ktNominal, ktFaultDeviation=ktFaultDeviation, N=datasetSize):
 	return (2*ktFaultDeviation)*np.random.random_sample(N)+(ktNominal-ktFaultDeviation)
@@ -74,7 +77,7 @@ for scenario in faultScenarioDict.keys():
 nums = np.hstack((["num"],np.arange(totalResults.shape[0]-1)))
 totalResults = np.vstack((nums,totalResults.T)).T
 
-with open("adcs_fdi_inputs_{}_constSeverity_singleFaults_randPre30Inception_remainDuration.csv".format(datasetSize), 'w') as csvFile:
+with open("adcs_fdi_inputs_{}_randomSeverity_singleFaults_5to55Inception_randRemainDuration.csv".format(datasetSize), 'w') as csvFile:
     writer = csv.writer(csvFile)
     writer.writerows(totalResults)
 

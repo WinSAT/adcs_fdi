@@ -87,7 +87,7 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 print ('\n')
 
 # Print iterations progress
-def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_length=50):
+def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=50):
 	"""
 	Call in a loop to create terminal progress bar
 	@params:
@@ -116,7 +116,8 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 #outputFolder = "output_625"
 #outputFolder = "output_300_constSeverity_csvs"
 #outputFolder = "output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
-outputFolder = "output_1000_constSeverity_singleFaults_randPre30Inception_remainDuration"
+outputFolder = "output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration"
+#outputFolder = "output_1000_constSeverity_singleFaults_randPre10Inception_10to20secDuration"
 
 stepsizeFreq = 10.0
 
@@ -155,57 +156,8 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	random.shuffle(finalDatasets)
 	return finalDatasets
 
-feature_settings = {
-	"abs_energy" : None,
-	"absolute_sum_of_changes" : None,
-	"approximate_entropy": [{"m": 2, "r": r} for r in [.1, .3, .5, .7, .9]],
-	"agg_autocorrelation": [{"f_agg": s, "maxlag": 40} for s in ["mean", "median", "var"]],
-	"binned_entropy" : [{"max_bins" : 10}],
-	"c3": [{"lag": 3}],
-	"cid_ce": [{"normalize":False}],
-	"count_above_mean" : None,
-	"count_below_mean" : None,
-	"energy_ratio_by_chunks": [{"num_segments" : 5, "segment_focus": i} for i in range(5)],
-	"first_location_of_maximum" : None,
-	"first_location_of_minimum" : None,
-	"has_duplicate" : None,
-	"has_duplicate_max" : None,
-	"has_duplicate_min" : None,
-	"index_mass_quantile": [{"q": q} for q in [0.25, 0.5, 0.75]],
-	"kurtosis" : None,
-	"last_location_of_maximum" : None,
-	"last_location_of_minimum" : None,
-	"length" : None,
-	"longest_strike_above_mean" : None,
-	"longest_strike_below_mean" : None,
-	"maximum" : None,
-	"max_langevin_fixed_point": [{"m": 3, "r": 30}],
-	"mean" : None,
-	"mean_abs_change" : None,
-	"mean_change" : None,
-	"median" : None,
-	"minimum" : None,
-	"number_peaks" : [{"n" : 3}],
-	"number_crossing_m" : [{"m" : 0}],
-	"percentage_of_reoccurring_values_to_all_values" : None,
-	"percentage_of_reoccurring_datapoints_to_all_datapoints" : None,
-	"quantile": [{"q": q} for q in [.1, .2, .3, .4, .6, .7, .8, .9]],
-	"range_count": [{"min": -1e12, "max": 0}, {"min": 0, "max": 1e12}],
-	"ratio_beyond_r_sigma": [{"r": x} for x in [0.5, 1, 1.5, 2, 2.5, 3]],
-	"sample_entropy" : None,
-	"skewness" : None,
-	"standard_deviation" : None,
-	"sum_of_reoccurring_data_points" : None,
-	"sum_of_reoccurring_values" : None,
-	"sum_values" : None,
-	"symmetry_looking": [{"r": r * 0.25} for r in range(4)],
-	"variance" : None,
-	"value_count" : [{"value" : 0}],
-	"variance_larger_than_standard_deviation" : None,
-}
-
-datasetLimit = 800
-datasetLimiter = {k:0 for k in [0,1,2,3,4]}
+#datasetLimit = 800
+#datasetLimiter = {k:0 for k in [0,1,2,3,4]}
 
 
 if args.x and args.y:
@@ -235,10 +187,10 @@ elif not args.x and not args.fx and not args.ntrain:
 			#get dataset parameters as dict
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 				dataSetParamsDict[paramName] = float(dataSetParams[idx])
-			if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
-				continue
-			else:
-				datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
+			#if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
+			#	continue
+			#else:
+			#	datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
 
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
@@ -687,13 +639,13 @@ try:
 		#"RBF SVM" : SVC(gamma=2, C=1),
 		#"Gaussian Process" : GaussianProcessClassifier(1.0 * RBF(1.0)),
 		"GradientBoostingClassifier": GradientBoostingClassifier(),
-		"Decision Tree" : DecisionTreeClassifier(max_depth=5),
-		"Random Forest" : RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-		"Neural Net" : MLPClassifier(alpha=1, max_iter=1000),
+		"Decision Tree" : DecisionTreeClassifier(),
+		"Random Forest" : RandomForestClassifier(),
+		"Neural Net" : MLPClassifier(),
 		"AdaBoost" : AdaBoostClassifier(),
 		#"Naive Bayes" : GaussianNB(),
 		#"QDA" : QuadraticDiscriminantAnalysis(),
-		'Any Hyperopt': HyperoptEstimator(classifier=any_classifier('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
+		'Any Hyperopt': True,
 		#'Hyperopt RandomForestClassifier': HyperoptEstimator(classifier=random_forest('RFC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
 		#'Hyperopt DecisionTreeClassifier': HyperoptEstimator(classifier=decision_tree('DTC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
 		#'Hyperopt ExtraTrees': HyperoptEstimator(classifier=extra_trees('ETC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
@@ -703,6 +655,8 @@ try:
 	# Train the classifier
 	for clfName,clf in classifiers.items():
 		print(clfName,'\n','-'*30)
+		if clfName == 'Any Hyperopt':
+			clf = HyperoptEstimator(classifier=any_classifier('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=50,trial_timeout=50)
 		clf.fit(nX_train, y_train)
 		y_test_predict = clf.predict(nX_test)
 		accuracy = accuracy_score(y_test, y_test_predict) * 100

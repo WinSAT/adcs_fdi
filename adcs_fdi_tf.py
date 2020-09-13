@@ -104,7 +104,10 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 
 #outputFolder = "output_625"
 #outputFolder = "../adcs_fdi/output_300_constSeverity_csvs"
-outputFolder = "../adcs_fdi/output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
+#outputFolder = "../adcs_fdi/output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
+outputFolder = "../adcs_fdi/output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration"
+#outputFolder = "../adcs_fdi/output_1000_constSeverity_singleFaults_randPre10Inception_10to20secDuration"
+
 stepsizeFreq = 10.0
 
 outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
@@ -142,8 +145,8 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	random.shuffle(finalDatasets)
 	return finalDatasets
 
-datasetLimit = 4000
-datasetLimiter = {k:0 for k in [0,1,2,3,4]}
+#datasetLimit = 2000
+#datasetLimiter = {k:0 for k in [0,1,2,3,4]}
 
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
@@ -172,10 +175,10 @@ elif not args.x and not args.fx and not args.ntrain:
 			#get dataset parameters as dict
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 				dataSetParamsDict[paramName] = float(dataSetParams[idx])
-			if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
-				continue
-			else:
-				datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
+			#if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
+			#	continue
+			#else:
+			#	datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
 			outputData = pandas.read_csv(outputFolder+"/"+data)
@@ -276,7 +279,7 @@ data_X = array(data_X)
 data_Y = array(data_Y)
 from utilities import *
 
-X_train, X_test, labels_train, labels_test = train_test_split(data_X, data_Y, test_size=0.2, random_state=42)
+X_train, X_test, labels_train, labels_test = train_test_split(data_X, data_Y, test_size=0.1, random_state=42)
 
 # Normalize?
 X_train, X_test = standardize(X_train, X_test)
@@ -295,7 +298,7 @@ tf.disable_v2_behavior()
 batch_size = 1000       # Batch size
 seq_len = X_tr.shape[1]          # Number of steps
 learning_rate = 0.001
-epochs = 1000
+epochs = 500
 
 n_classes = len(np.unique(data_Y))
 n_channels = X_tr.shape[2]
