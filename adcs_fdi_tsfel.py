@@ -116,8 +116,9 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
 #outputFolder = "output_625"
 #outputFolder = "output_300_constSeverity_csvs"
 #outputFolder = "output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
-outputFolder = "output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration"
+#outputFolder = "output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration"
 #outputFolder = "output_1000_constSeverity_singleFaults_randPre10Inception_10to20secDuration"
+outputFolder = "output_1000_randomSeverity_singleFaults_5to55Inception_randRemainDuration"
 
 stepsizeFreq = 10.0
 
@@ -717,7 +718,7 @@ try:
 	'''
 
 except Exception as err:
-	print ("ML Classifier Error:\n")
+	print ("ML Classifier Error:",err)
 	exc_type, exc_obj, exc_tb = sys.exc_info()
 	fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
 	print (exc_type, fname, exc_tb.tb_lineno)

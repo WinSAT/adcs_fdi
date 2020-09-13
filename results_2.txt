@@ -130,3 +130,5 @@ Accuracy: 83.5%
  [ 32   0 155   2   1]
  [ 52   1   0 141   2]
  [ 43   1   0   2 168]]
+
+Tensor flow: Test accuracy: 0.810000

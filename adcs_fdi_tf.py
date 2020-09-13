@@ -105,8 +105,10 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=2, bar_lengt
 #outputFolder = "output_625"
 #outputFolder = "../adcs_fdi/output_300_constSeverity_csvs"
 #outputFolder = "../adcs_fdi/output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
+
 outputFolder = "../adcs_fdi/output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration"
 #outputFolder = "../adcs_fdi/output_1000_constSeverity_singleFaults_randPre10Inception_10to20secDuration"
+#outputFolder = "../adcs_fdi/output_1000_randomSeverity_singleFaults_5to55Inception_randRemainDuration"
 
 stepsizeFreq = 10.0
 
@@ -295,10 +297,10 @@ y_test = one_hot(labels_test)
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior() 
 
-batch_size = 1000       # Batch size
+batch_size = 500       # Batch size
 seq_len = X_tr.shape[1]          # Number of steps
 learning_rate = 0.001
-epochs = 500
+epochs = 100
 
 n_classes = len(np.unique(data_Y))
 n_channels = X_tr.shape[2]
@@ -428,23 +430,28 @@ with tf.Session(graph=graph) as sess:
 	saver.save(sess,"checkpoints-cnn/har.ckpt")
 
 # Plot training and test loss
-t = np.arange(iteration-1)
-
-plt.figure(figsize = (6,6))
-plt.plot(t, np.array(train_loss), 'r-', t[t % 10 == 0], np.array(validation_loss), 'b*')
-plt.xlabel("iteration")
-plt.ylabel("Loss")
-plt.legend(['train', 'validation'], loc='upper right')
-plt.show()
-
-# Plot Accuracies
-plt.figure(figsize = (6,6))
-
-plt.plot(t, np.array(train_acc), 'r-', t[t % 10 == 0], validation_acc, 'b*')
-plt.xlabel("iteration")
-plt.ylabel("Accuray")
-plt.legend(['train', 'validation'], loc='upper right')
-plt.show()
+try:
+	t = np.arange(iteration-1)
+	
+	plt.figure(figsize = (6,6))
+	plt.plot(t, np.array(train_loss), 'r-', t[t % 10 == 0], np.array(validation_loss), 'b*')
+	plt.xlabel("iteration")
+	plt.ylabel("Loss")
+	plt.legend(['train', 'validation'], loc='upper right')
+	plt.show()
+	
+	# Plot Accuracies
+	plt.figure(figsize = (6,6))
+	
+	plt.plot(t, np.array(train_acc), 'r-', t[t % 10 == 0], validation_acc, 'b*')
+	plt.xlabel("iteration")
+	plt.ylabel("Accuray")
+	plt.legend(['train', 'validation'], loc='upper right')
+	plt.show()
+	
+except Exception as err:
+	print ("Tensorflow error:",err)
+	embed()
 
 test_acc = []
 
