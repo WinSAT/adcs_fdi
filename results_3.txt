@@ -1,4 +1,6 @@
-case 3:
+Results for case 3:
+- 1000 datapoints per scenario
+- random combination of kt and Vbus faults
 - Random sevirity for kt and vbus: value +- rand(deviation)
 - Random inception time from 5-55
 - Duration <30

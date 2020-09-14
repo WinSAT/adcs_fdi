@@ -1,4 +1,4 @@
-Results for:
+Results for case 2:
 - 1000 datapoints per scenario
 - random combination of kt and Vbus faults
 - Random sevirity for kt and vbus

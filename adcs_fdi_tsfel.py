@@ -113,22 +113,8 @@ def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_lengt
 #
 #import lightgbm as lgbm
 
-#outputFolder = "output_625"
-#outputFolder = "output_300_constSeverity_csvs"
-#outputFolder = "output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
-#outputFolder = "output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration"
-#outputFolder = "output_1000_constSeverity_singleFaults_randPre10Inception_10to20secDuration"
-outputFolder = "output_1000_randomSeverity_singleFaults_5to55Inception_randRemainDuration"
-
-stepsizeFreq = 10.0
-
-outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
-
-xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','q4_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
-xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','q4_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
-columnNames = ['id','time']+[i.split('_')[0] for i in xNamesFaulty]
-
 parser = argparse.ArgumentParser(description='Gets filenames for feature csvs')
+parser.add_argument('--case', type=int, help='selects which dataset to use: case 1-3')
 parser.add_argument('--x', type=str, help='X pandas dataset')
 parser.add_argument('--y', type=str, help='Y pandas dataset')
 parser.add_argument('--fx', type=str, help='X features dataset')
@@ -141,6 +127,26 @@ parser.add_argument('--ytest', type=str, help='Y features dataset')
 parser.add_argument('-cs','--constrainedScenarios', type=str, help='scenarios to only consider, comma seperated. eg. 0,1,2')
 parser.add_argument('-cn','--constrainedNumDatasets', type=str, help='number of datasets from each scenario')
 args = parser.parse_args()
+
+#outputFolder = "output_625"
+#outputFolder = "output_300_constSeverity_csvs"
+#outputFolder = "output_adcs_fdi_inputs_5000_constSeverity_singleFaults"
+cases = {
+	1: "output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration", #case 1
+	2: "output_1000_constSeverity_singleFaults_randPre10Inception_10to20secDuration", #case 2
+	3: "output_1000_randomSeverity_singleFaults_5to55Inception_randRemainDuration"} #case 3
+
+outputFolder = cases[args.case]
+print("Selected case {}: {}".format(args.case,outputFolder))
+
+stepsizeFreq = 10.0
+
+outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".csv")]
+
+xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','q4_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
+xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','q4_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
+columnNames = ['id','time']+[i.split('_')[0] for i in xNamesFaulty]
+
 #if extracted feature dataset is passed
 
 def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
@@ -643,7 +649,9 @@ try:
 		"Decision Tree" : DecisionTreeClassifier(),
 		"Random Forest" : RandomForestClassifier(),
 		"Neural Net" : MLPClassifier(),
-		"AdaBoost" : AdaBoostClassifier(),
+		"DecisionTree AdaBoost" : True,
+		"GradientBoosting AdaBoost" : True,
+		"RandomForest AdaBoost" : True,
 		#"Naive Bayes" : GaussianNB(),
 		#"QDA" : QuadraticDiscriminantAnalysis(),
 		'Any Hyperopt': True,
@@ -658,6 +666,14 @@ try:
 		print(clfName,'\n','-'*30)
 		if clfName == 'Any Hyperopt':
 			clf = HyperoptEstimator(classifier=any_classifier('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=50,trial_timeout=50)
+		elif clfName == "DecisionTree AdaBoost":
+			clf = AdaBoostClassifier()
+		elif clfName == "GradientBoosting AdaBoost":
+			clfA = GradientBoostingClassifier()
+			clf = AdaBoostClassifier(base_estimator=clfA)
+		elif clfName == "RandomForest AdaBoost":
+			clfA = RandomForestClassifier()
+			clf = AdaBoostClassifier(base_estimator=clfA)
 		clf.fit(nX_train, y_train)
 		y_test_predict = clf.predict(nX_test)
 		accuracy = accuracy_score(y_test, y_test_predict) * 100
@@ -665,6 +681,8 @@ try:
 		print(classification_report(y_test, y_test_predict))
 		print("Accuracy: " + str(accuracy) + '%')
 		print(confusion_matrix(y_test, y_test_predict))
+		if clfName == 'Any Hyperopt':
+			print('best model:',estim.best_model())
 	embed()
 	estim.fit( nX_train, y_train.ravel())
 	#saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")

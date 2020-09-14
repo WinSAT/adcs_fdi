@@ -1,20 +1,10 @@
-Results for:
+Results for case 1:
 case 1:
 - 1000 datapoints per scenario
 - random combination of kt and Vbus faults
 - Random sevirity for kt and vbus: value +- rand(deviation)
 - Random inception time for kt and vbus from 0-10 (same inception time for both)
 - Fault duration from inception to end of sim
-
-case 2:
-- Random inception time for kt and vbus from 0-10 (same inception time for both)
-- Fault duration randint between 10-20 seconds
-
-case 3:
-- Random sevirity for kt and vbus: value +- rand(deviation)
-- Random inception time from 5-55
-- Duration <30
-
 
 output_1000_constSeverity_singleFaults_randPre10Inception_remainDuration
 ---------------------------------------------------------------------------
@@ -118,6 +108,7 @@ Accuracy: 63.0%
  [ 18  38 110   6  31]
  [ 29  24  43  85   9]
  [ 34  54  10   5 101]]
+ 
 Any Hyperopt
  ------------------------------
               precision    recall  f1-score   support
