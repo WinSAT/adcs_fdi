@@ -682,7 +682,7 @@ try:
 		print("Accuracy: " + str(accuracy) + '%')
 		print(confusion_matrix(y_test, y_test_predict))
 		if clfName == 'Any Hyperopt':
-			print('best model:',estim.best_model())
+			print('best model:',clf.best_model())
 	embed()
 	estim.fit( nX_train, y_train.ravel())
 	#saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")

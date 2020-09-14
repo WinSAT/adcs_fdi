@@ -132,3 +132,178 @@ Accuracy: 86.3%
 
 
  Tensorflow: Test accuracy: 0.864000
+
+-----------------
+
+Start Machine Model Learning
+GradientBoostingClassifier
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.57      0.93      0.71       190
+           1       0.96      0.83      0.89       193
+           2       0.97      0.82      0.89       212
+           3       0.89      0.76      0.82       188
+           4       0.92      0.79      0.85       217
+
+    accuracy                           0.82      1000
+   macro avg       0.86      0.82      0.83      1000
+weighted avg       0.87      0.82      0.83      1000
+
+Accuracy: 82.39999999999999%
+[[176   1   1   8   4]
+ [ 24 160   3   2   4]
+ [ 27   4 173   5   3]
+ [ 39   1   1 143   4]
+ [ 42   0   0   3 172]]
+Decision Tree
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.58      0.59      0.59       190
+           1       0.86      0.83      0.84       193
+           2       0.83      0.81      0.82       212
+           3       0.76      0.76      0.76       188
+           4       0.71      0.72      0.72       217
+
+    accuracy                           0.74      1000
+   macro avg       0.75      0.74      0.74      1000
+weighted avg       0.75      0.74      0.75      1000
+
+Accuracy: 74.5%
+[[113   9  11  28  29]
+ [  9 160   7   4  13]
+ [ 20   4 172   4  12]
+ [ 21   5   8 143  11]
+ [ 33   9   9   9 157]]
+Random Forest
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.52      0.99      0.69       190
+           1       1.00      0.81      0.89       193
+           2       0.99      0.83      0.90       212
+           3       0.97      0.73      0.83       188
+           4       0.96      0.74      0.84       217
+
+    accuracy                           0.82      1000
+   macro avg       0.89      0.82      0.83      1000
+weighted avg       0.90      0.82      0.83      1000
+
+Accuracy: 81.69999999999999%
+[[189   0   0   1   0]
+ [ 31 156   0   0   6]
+ [ 36   0 175   1   0]
+ [ 50   0   1 137   0]
+ [ 55   0   0   2 160]]
+Neural Net
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.38      0.49      0.43       190
+           1       0.75      0.61      0.67       193
+           2       0.72      0.67      0.69       212
+           3       0.52      0.55      0.54       188
+           4       0.52      0.49      0.50       217
+
+    accuracy                           0.56      1000
+   macro avg       0.58      0.56      0.57      1000
+weighted avg       0.58      0.56      0.57      1000
+
+Accuracy: 56.00000000000001%
+[[ 93   9  10  39  39]
+ [ 29 117  14  12  21]
+ [ 35   5 141  13  18]
+ [ 42  12  11 103  20]
+ [ 48  14  19  30 106]]
+DecisionTree AdaBoost
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.59      0.88      0.71       190
+           1       0.70      0.54      0.61       193
+           2       0.57      0.49      0.53       212
+           3       0.71      0.63      0.66       188
+           4       0.43      0.43      0.43       217
+
+    accuracy                           0.59      1000
+   macro avg       0.60      0.60      0.59      1000
+weighted avg       0.59      0.59      0.58      1000
+
+Accuracy: 58.8%
+[[168   0   0  14   8]
+ [ 15 105  15  21  37]
+ [ 24   7 104   6  71]
+ [ 34   6  21 118   9]
+ [ 43  31  42   8  93]]
+GradientBoosting AdaBoost
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.59      0.95      0.73       190
+           1       0.99      0.85      0.92       193
+           2       0.99      0.85      0.92       212
+           3       0.92      0.76      0.83       188
+           4       0.92      0.80      0.86       217
+
+    accuracy                           0.84      1000
+   macro avg       0.88      0.84      0.85      1000
+weighted avg       0.89      0.84      0.85      1000
+
+Accuracy: 84.3%
+[[181   0   0   6   3]
+ [ 22 164   2   2   3]
+ [ 27   1 181   0   3]
+ [ 39   0   0 143   6]
+ [ 39   0   0   4 174]]
+RandomForest AdaBoost
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.53      0.99      0.69       190
+           1       0.99      0.80      0.88       193
+           2       0.99      0.82      0.90       212
+           3       0.98      0.72      0.83       188
+           4       0.94      0.74      0.83       217
+
+    accuracy                           0.81      1000
+   macro avg       0.89      0.82      0.83      1000
+weighted avg       0.89      0.81      0.83      1000
+
+Accuracy: 81.39999999999999%
+[[189   0   0   1   0]
+ [ 31 154   0   1   7]
+ [ 36   1 174   0   1]
+ [ 49   0   1 136   2]
+ [ 54   1   0   1 161]]
+Any Hyperopt
+ ------------------------------
+              precision    recall  f1-score   support
+
+           0       0.54      0.98      0.70       190
+           1       1.00      0.80      0.89       193
+           2       1.00      0.84      0.92       212
+           3       0.97      0.75      0.85       188
+           4       0.95      0.76      0.84       217
+
+    accuracy                           0.83      1000
+   macro avg       0.89      0.83      0.84      1000
+weighted avg       0.90      0.83      0.84      1000
+
+Accuracy: 82.69999999999999%
+[[187   0   0   2   1]
+ [ 30 155   0   0   8]
+ [ 33   0 179   0   0]
+ [ 47   0   0 141   0]
+ [ 50   0   0   2 165]]
+
+{'learner': ExtraTreesClassifier(bootstrap=True, ccp_alpha=0.0, class_weight=None,
+                      criterion='gini', max_depth=None,
+                      max_features=0.336598745798991, max_leaf_nodes=None,
+                      max_samples=None, min_impurity_decrease=0.0,
+                      min_impurity_split=None, min_samples_leaf=11,
+                      min_samples_split=2, min_weight_fraction_leaf=0.0,
+                      n_estimators=103, n_jobs=1, oob_score=False,
+                      random_state=0, verbose=False, warm_start=False),
+ 'preprocs': (MinMaxScaler(copy=True, feature_range=(-1.0, 1.0)),),
+ 'ex_preprocs': ()}
