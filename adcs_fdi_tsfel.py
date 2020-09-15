@@ -168,8 +168,8 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	random.shuffle(finalDatasets)
 	return finalDatasets
 
-datasetLimit = 300
-datasetLimiter = {k:0 for k in [0,1,2,3,4]}
+#datasetLimit = 1000
+#datasetLimiter = {k:0 for k in [0,1,2,3,4]}
 
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
@@ -198,10 +198,10 @@ elif not args.x and not args.fx and not args.ntrain:
 			#get dataset parameters as dict
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 				dataSetParamsDict[paramName] = float(dataSetParams[idx])
-			if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
-				continue
-			else:
-				datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
+			#if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
+			#	continue
+			#else:
+			#	datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
 
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
