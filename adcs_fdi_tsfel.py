@@ -168,7 +168,7 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	random.shuffle(finalDatasets)
 	return finalDatasets
 
-datasetLimit = 100
+datasetLimit = 300
 datasetLimiter = {k:0 for k in [0,1,2,3,4]}
 
 if args.x and args.y:
@@ -530,17 +530,27 @@ try:
 	'''
 	#X_train_filtered = X_train[list(relevant_features)]
 	#X_test_filtered = X_test[list(relevant_features)]
+
+	MLP_parameterSpace = {
+    	'hidden_layer_sizes': [(10,30,10),(20,)],
+    	'activation': ['tanh', 'relu'],
+    	'solver': ['sgd', 'adam'],
+    	'alpha': [0.0001, 0.05],
+    	'learning_rate': ['constant','adaptive'],
+	}
+
 	classifiers = {
 		#"Nearest Neighbors" : KNeighborsClassifier(3),
 		#"Linear SVM" : SVC(kernel="linear", C=0.025),
 		#"RBF SVM" : SVC(gamma=2, C=1),
 		#"Gaussian Process" : GaussianProcessClassifier(1.0 * RBF(1.0)),
-		"GradientBoostingClassifier": GradientBoostingClassifier(verbose=1),
+		"GradientBoostingClassifier": GradientBoostingClassifier(),
 		#"GradientBoostingClassifier": HyperoptEstimator(classifier=gradient_boosting('any_clf',),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=50),
-		"AdaboostClassifier": HyperoptEstimator(classifier=ada_boost('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=120,max_evals=150),
-		"Decision Tree" : DecisionTreeClassifier(verbose=1),
-		"Random Forest" : HyperoptEstimator(classifier=random_forest('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=120,max_evals=150),
-		"MLP" : True,
+		"AdaboostClassifier": AdaBoostClassifier(),
+		"Decision Tree" : DecisionTreeClassifier(),
+		"Random Forest" : RandomForestClassifier(),
+		"MLP" : GridSearchCV(MLPClassifier(max_iter=100),MLP_parameterSpace, n_jobs=-1, cv=5),
+		"hyperopt": HyperoptEstimator(classifier=any_classifier('any_clf',),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=30,max_evals=50),
 		#"DecisionTree AdaBoost" : True,
 		#"GradientBoosting AdaBoost" : True,
 		#"RandomForest AdaBoost" : True,
@@ -551,20 +561,14 @@ try:
 		#'Hyperopt DecisionTreeClassifier': HyperoptEstimator(classifier=decision_tree('DTC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
 		#'Hyperopt ExtraTrees': HyperoptEstimator(classifier=extra_trees('ETC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
 	}
-	MLP_parameterSpace = {
-    	'hidden_layer_sizes': [(10,30,10),(20,)],
-    	'activation': ['tanh', 'relu'],
-    	'solver': ['sgd', 'adam'],
-    	'alpha': [0.0001, 0.05],
-    	'learning_rate': ['constant','adaptive'],
-	}
+
 	# Train the classifier
 	for clfName,clf in classifiers.items():
 		print(clfName,'\n','-'*30)
 		if clfName == 'MLP':
-			clf = GridSearchCV(MLPClassifier(max_iter=100,verbose=1),MLP_parameterSpace, n_jobs=-1, cv=5)
+			clf = GridSearchCV(MLPClassifier(max_iter=100),MLP_parameterSpace, n_jobs=-1, cv=5)
 		clf.fit(nX_train, y_train)
-		if 'hyperopt' in str(clf):
+		if clfName == 'hyperopt':
 			clf = clf.best_model()['learner']
 			print ('Best {} params: {}'.format(clfName,str(clf)))
 		clf.fit(nX_train, y_train)
