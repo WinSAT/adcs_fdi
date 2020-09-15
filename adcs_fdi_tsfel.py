@@ -168,9 +168,8 @@ def reduceScenarioData(scenarioCsvs,numOfScenarios=16,numDatasets=300):
 	random.shuffle(finalDatasets)
 	return finalDatasets
 
-#datasetLimit = 800
-#datasetLimiter = {k:0 for k in [0,1,2,3,4]}
-
+datasetLimit = 100
+datasetLimiter = {k:0 for k in [0,1,2,3,4]}
 
 if args.x and args.y:
 	print ('Importing datasets - x: {}, y: {}'.format(args.x, args.y))
@@ -199,10 +198,10 @@ elif not args.x and not args.fx and not args.ntrain:
 			#get dataset parameters as dict
 			for idx,paramName in enumerate(["id","scenario","kt", "vbus", "ktInception", "vbusInception","ktDuration", "vbusDuration", "ktSeverity", "vbusSeverity"]):
 				dataSetParamsDict[paramName] = float(dataSetParams[idx])
-			#if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
-			#	continue
-			#else:
-			#	datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
+			if datasetLimiter[int(dataSetParamsDict['scenario'])] > datasetLimit:
+				continue
+			else:
+				datasetLimiter[int(dataSetParamsDict['scenario'])] += 1
 
 			#dataset parameters as array excluding id num
 			inputData = array([float(i) for i in dataSetParams[1:]])
@@ -536,10 +535,10 @@ try:
 		#"Linear SVM" : SVC(kernel="linear", C=0.025),
 		#"RBF SVM" : SVC(gamma=2, C=1),
 		#"Gaussian Process" : GaussianProcessClassifier(1.0 * RBF(1.0)),
-		"GradientBoostingClassifier": GradientBoostingClassifier(),
+		"GradientBoostingClassifier": GradientBoostingClassifier(verbose=1),
 		#"GradientBoostingClassifier": HyperoptEstimator(classifier=gradient_boosting('any_clf',),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=50),
 		"AdaboostClassifier": HyperoptEstimator(classifier=ada_boost('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=120,max_evals=150),
-		"Decision Tree" : DecisionTreeClassifier(),
+		"Decision Tree" : DecisionTreeClassifier(verbose=1),
 		"Random Forest" : HyperoptEstimator(classifier=random_forest('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=120,max_evals=150),
 		"MLP" : True,
 		#"DecisionTree AdaBoost" : True,
@@ -563,7 +562,7 @@ try:
 	for clfName,clf in classifiers.items():
 		print(clfName,'\n','-'*30)
 		if clfName == 'MLP':
-			clf = GridSearchCV(MLPClassifier(max_iter=100),MLP_parameterSpace, n_jobs=-1, cv=5)
+			clf = GridSearchCV(MLPClassifier(max_iter=100,verbose=1),MLP_parameterSpace, n_jobs=-1, cv=5)
 		clf.fit(nX_train, y_train)
 		if 'hyperopt' in str(clf):
 			clf = clf.best_model()['learner']
