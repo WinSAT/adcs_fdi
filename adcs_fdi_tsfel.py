@@ -25,7 +25,7 @@ from scipy.stats import kurtosis
 from sklearn.preprocessing import normalize
 from scipy.signal import savgol_filter
 #from tsfresh import extract_relevant_features
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import AdaBoostClassifier
@@ -62,7 +62,7 @@ from hyperopt.fmin import fmin
 #from xgboost import XGBClassifier
 from datetime import datetime
 import time
-from hpsklearn import HyperoptEstimator, standard_scaler, xgboost_classification, random_forest, decision_tree, any_classifier, min_max_scaler, gradient_boosting, any_preprocessing, extra_trees
+from hpsklearn import HyperoptEstimator, xgboost_classification, random_forest, decision_tree, any_classifier, gradient_boosting, any_preprocessing, extra_trees, ada_boost
 from hyperopt import tpe
 from sklearn.pipeline import Pipeline
 from tsfresh.examples import load_robot_execution_failures
@@ -146,6 +146,11 @@ outputDataset = [file for file in os.listdir(outputFolder) if file.endswith(".cs
 xNamesFaulty = ['q1_faulty','q2_faulty','q3_faulty','q4_faulty','omega1_faulty','omega2_faulty','omega3_faulty']
 xNamesNominal = ['q1_healthy','q2_healthy','q3_healthy','q4_healthy','omega1_healthy','omega2_healthy','omega3_healthy']
 columnNames = ['id','time']+[i.split('_')[0] for i in xNamesFaulty]
+
+# random state
+random_state=100
+np.random.seed(random_state) # we need this in each cell
+np.random.set_state=random_state
 
 #if extracted feature dataset is passed
 
@@ -350,9 +355,9 @@ elif not args.ntrain:
 		X_test_fs = selector.transform(X_test_fs)
 		
 		# Normalising Features
-		min_max_scaler = preprocessing.StandardScaler()
-		nX_train = min_max_scaler.fit_transform(X_train_fs)
-		nX_test = min_max_scaler.transform(X_test_fs)
+		scaler = preprocessing.StandardScaler()
+		nX_train = scaler.fit_transform(X_train_fs)
+		nX_test = scaler.transform(X_test_fs)
 
 		saveTime = datetime.now().strftime("%d-%m-%Y-%H-%M-%S")
 
@@ -526,154 +531,43 @@ try:
 	'''
 	#X_train_filtered = X_train[list(relevant_features)]
 	#X_test_filtered = X_test[list(relevant_features)]
-	def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
-						n_jobs=None, train_sizes=np.linspace(.1, 1.0, 5)):
-		"""
-		Generate 3 plots: the test and training learning curve, the training
-		samples vs fit times curve, the fit times vs score curve.
-
-		Parameters
-		----------
-		estimator : object type that implements the "fit" and "predict" methods
-			An object of that type which is cloned for each validation.
-
-		title : string
-			Title for the chart.
-
-		X : array-like, shape (n_samples, n_features)
-			Training vector, where n_samples is the number of samples and
-			n_features is the number of features.
-
-		y : array-like, shape (n_samples) or (n_samples, n_features), optional
-			Target relative to X for classification or regression;
-			None for unsupervised learning.
-
-		axes : array of 3 axes, optional (default=None)
-			Axes to use for plotting the curves.
-
-		ylim : tuple, shape (ymin, ymax), optional
-			Defines minimum and maximum yvalues plotted.
-
-		cv : int, cross-validation generator or an iterable, optional
-			Determines the cross-validation splitting strategy.
-			Possible inputs for cv are:
-
-			  - None, to use the default 5-fold cross-validation,
-			  - integer, to specify the number of folds.
-			  - :term:`CV splitter`,
-			  - An iterable yielding (train, test) splits as arrays of indices.
-
-			For integer/None inputs, if ``y`` is binary or multiclass,
-			:class:`StratifiedKFold` used. If the estimator is not a classifier
-			or if ``y`` is neither binary nor multiclass, :class:`KFold` is used.
-
-			Refer :ref:`User Guide <cross_validation>` for the various
-			cross-validators that can be used here.
-
-		n_jobs : int or None, optional (default=None)
-			Number of jobs to run in parallel.
-			``None`` means 1 unless in a :obj:`joblib.parallel_backend` context.
-			``-1`` means using all processors. See :term:`Glossary <n_jobs>`
-			for more details.
-
-		train_sizes : array-like, shape (n_ticks,), dtype float or int
-			Relative or absolute numbers of training examples that will be used to
-			generate the learning curve. If the dtype is float, it is regarded as a
-			fraction of the maximum size of the training set (that is determined
-			by the selected validation method), i.e. it has to be within (0, 1].
-			Otherwise it is interpreted as absolute sizes of the training sets.
-			Note that for classification the number of samples usually have to
-			be big enough to contain at least one sample from each class.
-			(default: np.linspace(0.1, 1.0, 5))
-		"""
-		if axes is None:
-			_, axes = plt.subplots(1, 3, figsize=(20, 5))
-
-		axes[0].set_title(title)
-		if ylim is not None:
-			axes[0].set_ylim(*ylim)
-		axes[0].set_xlabel("Training examples")
-		axes[0].set_ylabel("Score")
-
-		train_sizes, train_scores, test_scores, fit_times, _ = \
-			learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
-						   train_sizes=train_sizes,
-						   return_times=True)
-		train_scores_mean = np.mean(train_scores, axis=1)
-		train_scores_std = np.std(train_scores, axis=1)
-		test_scores_mean = np.mean(test_scores, axis=1)
-		test_scores_std = np.std(test_scores, axis=1)
-		fit_times_mean = np.mean(fit_times, axis=1)
-		fit_times_std = np.std(fit_times, axis=1)
-
-		# Plot learning curve
-		axes[0].grid()
-		axes[0].fill_between(train_sizes, train_scores_mean - train_scores_std,
-							 train_scores_mean + train_scores_std, alpha=0.1,
-							 color="r")
-		axes[0].fill_between(train_sizes, test_scores_mean - test_scores_std,
-							 test_scores_mean + test_scores_std, alpha=0.1,
-							 color="g")
-		axes[0].plot(train_sizes, train_scores_mean, 'o-', color="r",
-					 label="Training score")
-		axes[0].plot(train_sizes, test_scores_mean, 'o-', color="g",
-					 label="Cross-validation score")
-		axes[0].legend(loc="best")
-
-		# Plot n_samples vs fit_times
-		axes[1].grid()
-		axes[1].plot(train_sizes, fit_times_mean, 'o-')
-		axes[1].fill_between(train_sizes, fit_times_mean - fit_times_std,
-							 fit_times_mean + fit_times_std, alpha=0.1)
-		axes[1].set_xlabel("Training examples")
-		axes[1].set_ylabel("fit_times")
-		axes[1].set_title("Scalability of the model")
-
-		# Plot fit_time vs score
-		axes[2].grid()
-		axes[2].plot(fit_times_mean, test_scores_mean, 'o-')
-		axes[2].fill_between(fit_times_mean, test_scores_mean - test_scores_std,
-							 test_scores_mean + test_scores_std, alpha=0.1)
-		axes[2].set_xlabel("fit_times")
-		axes[2].set_ylabel("Score")
-		axes[2].set_title("Performance of the model")
-
-		return plt
-
 	classifiers = {
 		#"Nearest Neighbors" : KNeighborsClassifier(3),
 		#"Linear SVM" : SVC(kernel="linear", C=0.025),
 		#"RBF SVM" : SVC(gamma=2, C=1),
 		#"Gaussian Process" : GaussianProcessClassifier(1.0 * RBF(1.0)),
 		"GradientBoostingClassifier": GradientBoostingClassifier(),
+		#"GradientBoostingClassifier": HyperoptEstimator(classifier=gradient_boosting('any_clf',),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=50),
+		"AdaboostClassifier": HyperoptEstimator(classifier=ada_boost('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=120,max_evals=150),
 		"Decision Tree" : DecisionTreeClassifier(),
-		"Random Forest" : RandomForestClassifier(),
-		"Neural Net" : MLPClassifier(),
-		"DecisionTree AdaBoost" : True,
-		"GradientBoosting AdaBoost" : True,
-		"RandomForest AdaBoost" : True,
+		"Random Forest" : HyperoptEstimator(classifier=random_forest('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,trial_timeout=120,max_evals=150),
+		"MLP" : True,
+		#"DecisionTree AdaBoost" : True,
+		#"GradientBoosting AdaBoost" : True,
+		#"RandomForest AdaBoost" : True,
 		#"Naive Bayes" : GaussianNB(),
 		#"QDA" : QuadraticDiscriminantAnalysis(),
-		'Any Hyperopt': True,
+		#'Any Hyperopt': True,
 		#'Hyperopt RandomForestClassifier': HyperoptEstimator(classifier=random_forest('RFC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
 		#'Hyperopt DecisionTreeClassifier': HyperoptEstimator(classifier=decision_tree('DTC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
 		#'Hyperopt ExtraTrees': HyperoptEstimator(classifier=extra_trees('ETC'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=150,trial_timeout=120),
-
 	}
-	cv = ShuffleSplit(n_splits=100, test_size=0.2, random_state=0)
+	MLP_parameterSpace = {
+    	'hidden_layer_sizes': [(10,30,10),(20,)],
+    	'activation': ['tanh', 'relu'],
+    	'solver': ['sgd', 'adam'],
+    	'alpha': [0.0001, 0.05],
+    	'learning_rate': ['constant','adaptive'],
+	}
 	# Train the classifier
 	for clfName,clf in classifiers.items():
 		print(clfName,'\n','-'*30)
-		if clfName == 'Any Hyperopt':
-			clf = HyperoptEstimator(classifier=any_classifier('any_clf'),preprocessing=any_preprocessing('my_pre'),algo=tpe.suggest,max_evals=50,trial_timeout=50)
-		elif clfName == "DecisionTree AdaBoost":
-			clf = AdaBoostClassifier()
-		elif clfName == "GradientBoosting AdaBoost":
-			clfA = GradientBoostingClassifier()
-			clf = AdaBoostClassifier(base_estimator=clfA)
-		elif clfName == "RandomForest AdaBoost":
-			clfA = RandomForestClassifier()
-			clf = AdaBoostClassifier(base_estimator=clfA)
+		if clfName == 'MLP':
+			clf = GridSearchCV(MLPClassifier(max_iter=100),MLP_parameterSpace, n_jobs=-1, cv=5)
+		clf.fit(nX_train, y_train)
+		if 'hyperopt' in str(clf):
+			clf = clf.best_model()['learner']
+			print ('Best {} params: {}'.format(clfName,str(clf)))
 		clf.fit(nX_train, y_train)
 		y_test_predict = clf.predict(nX_test)
 		accuracy = accuracy_score(y_test, y_test_predict) * 100
